@@ -15,20 +15,20 @@
                     <span id="statusText">Загрузка моделей распознавания...</span>
                 </div>
 
-                <!-- Блок проверки жестом -->
-                <div id="gestureChallenge" class="gesture-challenge d-none">
+                <!-- Блок проверки жестом — всегда виден -->
+                <div id="gestureChallenge" class="gesture-challenge">
                     <div class="gesture-challenge-header">
                         <i class="bi bi-shield-lock"></i> Проверка безопасности
                     </div>
                     <div class="gesture-challenge-body">
-                        <div class="gesture-emoji" id="gestureEmoji"></div>
+                        <div class="gesture-emoji" id="gestureEmoji">⏳</div>
                         <div class="gesture-label">Покажите жест:</div>
-                        <div class="gesture-name" id="gestureIcon"></div>
+                        <div class="gesture-name" id="gestureIcon">Загрузка...</div>
                     </div>
                     <div class="gesture-progress">
                         <div class="gesture-progress-bar" id="gestureProgressBar"></div>
                     </div>
-                    <div class="gesture-status" id="gestureStatus">Ожидание жеста...</div>
+                    <div class="gesture-status" id="gestureStatus">Загрузка модели распознавания жестов...</div>
                 </div>
 
                 <button id="loginBtn" class="btn btn-primary btn-lg w-100 mb-3" disabled>

@@ -4,7 +4,22 @@ let handsModel = null;
 let gestureChallenge = null;   // {gesture, label, token}
 let gestureConfirmed = false;
 let gestureMatchCount = 0;
+let handsReady = false;
 const GESTURE_CONFIRM_COUNT = 4; // 4 совпадения подряд (~2 сек)
+
+const gestureEmojis = {
+    'thumbs_up':  '👍',
+    'peace':      '✌️',
+    'open_palm':  '✋',
+    'one_finger': '☝️'
+};
+
+const gestureNames = {
+    'thumbs_up':  'Большой палец вверх',
+    'peace':      'Знак мира (два пальца)',
+    'open_palm':  'Открытая ладонь',
+    'one_finger': 'Один палец вверх'
+};
 
 async function initFaceAuth(mode) {
     video = document.getElementById('video');
@@ -22,13 +37,13 @@ async function initFaceAuth(mode) {
             faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
 
-        // Для входа — также загружаем распознавание жестов
-        if (mode === 'login') {
-            statusText.textContent = 'Загрузка модели распознавания жестов...';
-            await initHandsModel();
-        }
-
         statusText.textContent = 'Модели загружены. Запуск камеры...';
+
+        // Для входа — загружаем модель жестов и запрашиваем задание параллельно с камерой
+        if (mode === 'login') {
+            initHandsModel();
+            fetchGestureChallenge();
+        }
 
         // Запускаем видеопоток с камеры
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -41,15 +56,11 @@ async function initFaceAuth(mode) {
             statusText.textContent = 'Камера активна. Посмотрите в камеру.';
 
             if (mode === 'login') {
-                // Запрашиваем случайный жест и начинаем распознавание
-                fetchGestureChallenge();
                 startGestureDetection();
-                // Кнопка разблокируется только после подтверждения жеста
             } else {
                 document.getElementById('registerBtn').disabled = false;
             }
 
-            // Рисуем рамку вокруг лица в реальном времени
             detectFaceLoop();
         });
 
@@ -69,64 +80,68 @@ async function initFaceAuth(mode) {
 
 // ==================== Распознавание жестов ====================
 
-async function initHandsModel() {
-    return new Promise((resolve, reject) => {
-        try {
-            handsModel = new Hands({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
-            });
+function initHandsModel() {
+    const gestureStatusEl = document.getElementById('gestureStatus');
 
-            handsModel.setOptions({
-                maxNumHands: 1,
-                modelComplexity: 1,
-                minDetectionConfidence: 0.7,
-                minTrackingConfidence: 0.5
-            });
+    if (typeof Hands === 'undefined') {
+        console.error('MediaPipe Hands не загружен');
+        gestureStatusEl.textContent = 'Ошибка загрузки модели жестов. Обновите страницу.';
+        gestureStatusEl.className = 'gesture-status warning';
+        return;
+    }
 
-            handsModel.onResults(onHandResults);
+    try {
+        handsModel = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
+        });
 
-            // Модель инициализируется при первом вызове send()
-            resolve();
-        } catch (err) {
-            reject(err);
-        }
-    });
+        handsModel.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.5
+        });
+
+        handsModel.onResults(onHandResults);
+        handsReady = true;
+
+        gestureStatusEl.textContent = 'Модель жестов загружена. Покажите жест камере.';
+    } catch (err) {
+        console.error('Ошибка инициализации MediaPipe Hands:', err);
+        gestureStatusEl.textContent = 'Ошибка модели жестов: ' + err.message;
+        gestureStatusEl.className = 'gesture-status warning';
+    }
 }
 
-const gestureEmojis = {
-    'thumbs_up':  '👍',
-    'peace':      '✌️',
-    'open_palm':  '✋',
-    'one_finger': '☝️'
-};
-
-const gestureNames = {
-    'thumbs_up':  'Большой палец вверх',
-    'peace':      'Знак мира (два пальца)',
-    'open_palm':  'Открытая ладонь',
-    'one_finger': 'Один палец вверх'
-};
-
 async function fetchGestureChallenge() {
+    const gestureStatusEl = document.getElementById('gestureStatus');
+    const gestureEmoji = document.getElementById('gestureEmoji');
+    const gestureIcon = document.getElementById('gestureIcon');
+
     try {
         const res = await fetch('/api/gesture-challenge');
+        if (!res.ok) throw new Error('Сервер вернул ошибку');
+
         gestureChallenge = await res.json();
 
-        const challengeEl = document.getElementById('gestureChallenge');
-        const gestureEmoji = document.getElementById('gestureEmoji');
-        const gestureIcon = document.getElementById('gestureIcon');
-
-        challengeEl.classList.remove('d-none');
         gestureEmoji.textContent = gestureEmojis[gestureChallenge.gesture] || '🤚';
         gestureIcon.textContent = gestureNames[gestureChallenge.gesture] || gestureChallenge.label;
+
+        if (handsReady) {
+            gestureStatusEl.textContent = 'Покажите этот жест камере';
+        }
     } catch (err) {
         console.error('Ошибка загрузки жеста:', err);
+        gestureEmoji.textContent = '❌';
+        gestureIcon.textContent = 'Ошибка загрузки';
+        gestureStatusEl.textContent = 'Не удалось получить жест. Обновите страницу.';
+        gestureStatusEl.className = 'gesture-status warning';
     }
 }
 
 function startGestureDetection() {
     setInterval(async () => {
-        if (handsModel && video.readyState >= 2 && !gestureConfirmed) {
+        if (handsModel && handsReady && video.readyState >= 2 && !gestureConfirmed) {
             try {
                 await handsModel.send({ image: video });
             } catch (e) {
@@ -164,25 +179,20 @@ function onHandResults(results) {
                 gestureStatusEl.textContent = '✅ Жест подтверждён! Нажмите кнопку входа.';
                 gestureStatusEl.className = 'gesture-status success';
 
-                // Меняем стиль блока на успешный
                 const challengeEl = document.getElementById('gestureChallenge');
                 challengeEl.classList.add('confirmed');
 
-                // Меняем эмодзи на галочку
-                const emojiEl = document.getElementById('gestureEmoji');
-                emojiEl.textContent = '✅';
-
+                document.getElementById('gestureEmoji').textContent = '✅';
                 updateGestureProgress();
 
-                // Разблокируем кнопку входа
                 document.getElementById('loginBtn').disabled = false;
             }
         } else {
             gestureMatchCount = Math.max(0, gestureMatchCount - 1);
             updateGestureProgress();
             if (detected) {
-                const shownGesture = gestureEmojis[detected] || '';
-                gestureStatusEl.textContent = `Вы показываете ${shownGesture} — нужен другой жест!`;
+                const shownEmoji = gestureEmojis[detected] || '';
+                gestureStatusEl.textContent = `Вы показываете ${shownEmoji} — нужен другой жест!`;
                 gestureStatusEl.className = 'gesture-status warning';
             } else {
                 gestureStatusEl.textContent = 'Покажите жест камере';
@@ -292,6 +302,13 @@ async function handleLogin() {
     const statusEl = document.getElementById('status');
     const statusText = document.getElementById('statusText');
 
+    // Проверяем, что жест подтверждён
+    if (!gestureConfirmed) {
+        statusEl.className = 'alert alert-danger';
+        statusText.textContent = 'Сначала покажите требуемый жест камере';
+        return;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Распознавание...';
 
@@ -319,7 +336,6 @@ async function handleLogin() {
             const roleLabels = { admin: 'Администратор', manager: 'Менеджер', viewer: 'Зритель' };
             statusText.textContent = `Добро пожаловать, ${data.user}!`;
 
-            // Показываем информацию о пользователе и роли
             const userInfo = document.getElementById('userInfo');
             if (userInfo) {
                 userInfo.classList.remove('d-none');
@@ -380,12 +396,10 @@ async function handleRegister() {
 
         if (response.ok) {
             if (data.approved) {
-                // Первый пользователь (админ) — сразу на дашборд
                 statusEl.className = 'alert alert-success';
                 statusText.textContent = `Регистрация успешна! Добро пожаловать, ${data.user}!`;
                 setTimeout(() => window.location.href = '/dashboard', 1000);
             } else {
-                // Обычный пользователь — ожидание подтверждения
                 statusEl.className = 'alert alert-warning';
                 statusText.textContent = data.message;
                 btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Заявка отправлена';
