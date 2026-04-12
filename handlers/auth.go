@@ -14,10 +14,39 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// LoginPage отображает страницу входа
+// LoginPage отображает страницу входа с случайным жестом
 func LoginPage(c *gin.Context) {
+	gestures := []string{"thumbs_up", "peace", "open_palm", "one_finger"}
+	gesture := gestures[rand.Intn(len(gestures))]
+
+	emojis := map[string]string{
+		"thumbs_up":  "👍",
+		"peace":      "✌️",
+		"open_palm":  "✋",
+		"one_finger": "☝️",
+	}
+	names := map[string]string{
+		"thumbs_up":  "Большой палец вверх",
+		"peace":      "Знак мира (два пальца)",
+		"open_palm":  "Открытая ладонь",
+		"one_finger": "Один палец вверх",
+	}
+
+	// Создаём подписанный токен жеста (2 минуты)
+	claims := jwt.MapClaims{
+		"gesture": gesture,
+		"type":    "gesture_challenge",
+		"exp":     time.Now().Add(2 * time.Minute).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, _ := token.SignedString(middleware.JWTSecret)
+
 	c.HTML(http.StatusOK, "login.html", gin.H{
-		"title": "Вход в систему",
+		"title":        "Вход в систему",
+		"gesture":      gesture,
+		"gestureEmoji": emojis[gesture],
+		"gestureName":  names[gesture],
+		"gestureToken": tokenString,
 	})
 }
 

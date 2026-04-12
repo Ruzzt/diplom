@@ -1,24 +1,16 @@
 let video;
 let faceDescriptor = null;
 let handsModel = null;
-let gestureChallenge = null;   // {gesture, label, token}
 let gestureConfirmed = false;
 let gestureMatchCount = 0;
 let handsReady = false;
-const GESTURE_CONFIRM_COUNT = 4; // 4 совпадения подряд (~2 сек)
+const GESTURE_CONFIRM_COUNT = 4;
 
 const gestureEmojis = {
     'thumbs_up':  '👍',
     'peace':      '✌️',
     'open_palm':  '✋',
     'one_finger': '☝️'
-};
-
-const gestureNames = {
-    'thumbs_up':  'Большой палец вверх',
-    'peace':      'Знак мира (два пальца)',
-    'open_palm':  'Открытая ладонь',
-    'one_finger': 'Один палец вверх'
 };
 
 async function initFaceAuth(mode) {
@@ -37,15 +29,14 @@ async function initFaceAuth(mode) {
             faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
 
-        statusText.textContent = 'Модели загружены. Запуск камеры...';
-
-        // Для входа — загружаем модель жестов и запрашиваем задание параллельно с камерой
+        // Для входа — ждём загрузку модели жестов (грузится в HTML module script)
         if (mode === 'login') {
-            initHandsModel();
-            fetchGestureChallenge();
+            statusText.textContent = 'Ожидание модели жестов...';
+            await waitForHandModel();
         }
 
-        // Запускаем видеопоток с камеры
+        statusText.textContent = 'Запуск камеры...';
+
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { width: 640, height: 480, facingMode: 'user' }
         });
@@ -53,18 +44,20 @@ async function initFaceAuth(mode) {
 
         video.addEventListener('play', () => {
             statusEl.className = 'alert alert-success';
-            statusText.textContent = 'Камера активна. Посмотрите в камеру.';
 
             if (mode === 'login') {
-                startGestureDetection();
+                statusText.textContent = 'Камера активна. Покажите жест и смотрите в камеру.';
+                if (handsReady) {
+                    startGestureDetection();
+                }
             } else {
+                statusText.textContent = 'Камера активна. Посмотрите в камеру.';
                 document.getElementById('registerBtn').disabled = false;
             }
 
             detectFaceLoop();
         });
 
-        // Привязываем кнопки
         if (mode === 'login') {
             document.getElementById('loginBtn').addEventListener('click', handleLogin);
         } else {
@@ -80,73 +73,59 @@ async function initFaceAuth(mode) {
 
 // ==================== Распознавание жестов ====================
 
-function initHandsModel() {
-    const gestureStatusEl = document.getElementById('gestureStatus');
-
-    if (typeof Hands === 'undefined') {
-        console.error('MediaPipe Hands не загружен');
-        gestureStatusEl.textContent = 'Ошибка загрузки модели жестов. Обновите страницу.';
-        gestureStatusEl.className = 'gesture-status warning';
-        return;
-    }
-
-    try {
-        handsModel = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
-        });
-
-        handsModel.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.7,
-            minTrackingConfidence: 0.5
-        });
-
-        handsModel.onResults(onHandResults);
-        handsReady = true;
-
-        gestureStatusEl.textContent = 'Модель жестов загружена. Покажите жест камере.';
-    } catch (err) {
-        console.error('Ошибка инициализации MediaPipe Hands:', err);
-        gestureStatusEl.textContent = 'Ошибка модели жестов: ' + err.message;
-        gestureStatusEl.className = 'gesture-status warning';
-    }
-}
-
-async function fetchGestureChallenge() {
-    const gestureStatusEl = document.getElementById('gestureStatus');
-    const gestureEmoji = document.getElementById('gestureEmoji');
-    const gestureIcon = document.getElementById('gestureIcon');
-
-    try {
-        const res = await fetch('/api/gesture-challenge');
-        if (!res.ok) throw new Error('Сервер вернул ошибку');
-
-        gestureChallenge = await res.json();
-
-        gestureEmoji.textContent = gestureEmojis[gestureChallenge.gesture] || '🤚';
-        gestureIcon.textContent = gestureNames[gestureChallenge.gesture] || gestureChallenge.label;
-
-        if (handsReady) {
-            gestureStatusEl.textContent = 'Покажите этот жест камере';
+function waitForHandModel() {
+    return new Promise((resolve) => {
+        // Модель уже загружена?
+        if (window.handLandmarker) {
+            handsModel = window.handLandmarker;
+            handsReady = true;
+            console.log('Модель жестов уже готова');
+            resolve();
+            return;
         }
-    } catch (err) {
-        console.error('Ошибка загрузки жеста:', err);
-        gestureEmoji.textContent = '❌';
-        gestureIcon.textContent = 'Ошибка загрузки';
-        gestureStatusEl.textContent = 'Не удалось получить жест. Обновите страницу.';
-        gestureStatusEl.className = 'gesture-status warning';
-    }
+
+        // Ждём событие загрузки
+        window.addEventListener('hand-model-ready', () => {
+            handsModel = window.handLandmarker;
+            handsReady = true;
+            console.log('Модель жестов получена');
+            resolve();
+        });
+
+        // Если ошибка — продолжаем без жестов
+        window.addEventListener('hand-model-error', () => {
+            console.error('Модель жестов не загрузилась');
+            resolve();
+        });
+
+        // Таймаут 30 секунд
+        setTimeout(() => {
+            if (!handsReady) {
+                console.warn('Таймаут загрузки модели жестов');
+                const gestureStatusEl = document.getElementById('gestureStatus');
+                if (gestureStatusEl) {
+                    gestureStatusEl.textContent = '⚠️ Модель жестов не загрузилась. Обновите страницу (Ctrl+Shift+R).';
+                    gestureStatusEl.className = 'gesture-status warning';
+                }
+            }
+            resolve();
+        }, 30000);
+    });
 }
 
 function startGestureDetection() {
-    setInterval(async () => {
-        if (handsModel && handsReady && video.readyState >= 2 && !gestureConfirmed) {
-            try {
-                await handsModel.send({ image: video });
-            } catch (e) {
-                // пропускаем ошибки кадров
-            }
+    console.log('Запуск распознавания жестов');
+    const gestureStatusEl = document.getElementById('gestureStatus');
+    gestureStatusEl.textContent = 'Покажите жест камере';
+
+    setInterval(() => {
+        if (!handsModel || !handsReady || video.readyState < 2 || gestureConfirmed) return;
+
+        try {
+            const results = handsModel.detectForVideo(video, performance.now());
+            processHandResults(results);
+        } catch (e) {
+            console.error('Ошибка детекции:', e);
         }
     }, 500);
 }
@@ -159,16 +138,18 @@ function updateGestureProgress() {
     }
 }
 
-function onHandResults(results) {
+function processHandResults(results) {
     if (gestureConfirmed) return;
 
     const gestureStatusEl = document.getElementById('gestureStatus');
+    const requiredGesture = (typeof GESTURE_DATA !== 'undefined') ? GESTURE_DATA.gesture : null;
+    if (!requiredGesture) return;
 
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        const landmarks = results.multiHandLandmarks[0];
+    if (results.landmarks && results.landmarks.length > 0) {
+        const landmarks = results.landmarks[0];
         const detected = detectGesture(landmarks);
 
-        if (detected === gestureChallenge?.gesture) {
+        if (detected === requiredGesture) {
             gestureMatchCount++;
             gestureStatusEl.textContent = `Распознаю жест... (${gestureMatchCount}/${GESTURE_CONFIRM_COUNT})`;
             gestureStatusEl.className = 'gesture-status detecting';
@@ -179,23 +160,19 @@ function onHandResults(results) {
                 gestureStatusEl.textContent = '✅ Жест подтверждён! Нажмите кнопку входа.';
                 gestureStatusEl.className = 'gesture-status success';
 
-                const challengeEl = document.getElementById('gestureChallenge');
-                challengeEl.classList.add('confirmed');
-
-                document.getElementById('gestureEmoji').textContent = '✅';
+                document.getElementById('gestureChallenge').classList.add('confirmed');
                 updateGestureProgress();
-
                 document.getElementById('loginBtn').disabled = false;
             }
         } else {
             gestureMatchCount = Math.max(0, gestureMatchCount - 1);
             updateGestureProgress();
             if (detected) {
-                const shownEmoji = gestureEmojis[detected] || '';
+                const shownEmoji = gestureEmojis[detected] || '?';
                 gestureStatusEl.textContent = `Вы показываете ${shownEmoji} — нужен другой жест!`;
                 gestureStatusEl.className = 'gesture-status warning';
             } else {
-                gestureStatusEl.textContent = 'Покажите жест камере';
+                gestureStatusEl.textContent = 'Покажите жест чётче';
                 gestureStatusEl.className = 'gesture-status';
             }
         }
@@ -207,34 +184,23 @@ function onHandResults(results) {
     }
 }
 
-// Определяет какой жест показан по ориентирам руки
 function detectGesture(lm) {
     const fingers = getExtendedFingers(lm);
     const [thumb, index, middle, ring, pinky] = fingers;
 
-    // 👍 Большой палец вверх: только большой палец
     if (thumb && !index && !middle && !ring && !pinky) return 'thumbs_up';
-
-    // ✌️ Знак мира: указательный + средний
     if (!thumb && index && middle && !ring && !pinky) return 'peace';
-
-    // ✋ Открытая ладонь: все пальцы
     if (thumb && index && middle && ring && pinky) return 'open_palm';
-
-    // ☝️ Один палец: только указательный
     if (!thumb && index && !middle && !ring && !pinky) return 'one_finger';
 
     return null;
 }
 
-// Определяет какие пальцы разогнуты (вытянуты)
 function getExtendedFingers(lm) {
-    // Большой палец: кончик (4) дальше от запястья (0) чем сустав (3)
     const thumbTipDist = Math.hypot(lm[4].x - lm[0].x, lm[4].y - lm[0].y);
     const thumbIpDist  = Math.hypot(lm[3].x - lm[0].x, lm[3].y - lm[0].y);
     const thumb = thumbTipDist > thumbIpDist * 1.1;
 
-    // Остальные пальцы: кончик выше (меньше y) чем средний сустав (PIP)
     const index  = lm[8].y  < lm[6].y;
     const middle = lm[12].y < lm[10].y;
     const ring   = lm[16].y < lm[14].y;
@@ -302,7 +268,6 @@ async function handleLogin() {
     const statusEl = document.getElementById('status');
     const statusText = document.getElementById('statusText');
 
-    // Проверяем, что жест подтверждён
     if (!gestureConfirmed) {
         statusEl.className = 'alert alert-danger';
         statusText.textContent = 'Сначала покажите требуемый жест камере';
@@ -319,13 +284,15 @@ async function handleLogin() {
         return;
     }
 
+    const gestureToken = (typeof GESTURE_DATA !== 'undefined') ? GESTURE_DATA.token : '';
+
     try {
         const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 face_descriptor: descriptor,
-                gesture_token: gestureChallenge?.token || ''
+                gesture_token: gestureToken
             })
         });
 

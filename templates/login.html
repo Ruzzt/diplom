@@ -15,20 +15,20 @@
                     <span id="statusText">Загрузка моделей распознавания...</span>
                 </div>
 
-                <!-- Блок проверки жестом — всегда виден -->
+                <!-- Блок проверки жестом -->
                 <div id="gestureChallenge" class="gesture-challenge">
                     <div class="gesture-challenge-header">
                         <i class="bi bi-shield-lock"></i> Проверка безопасности
                     </div>
                     <div class="gesture-challenge-body">
-                        <div class="gesture-emoji" id="gestureEmoji">⏳</div>
+                        <div class="gesture-emoji">{{ .gestureEmoji }}</div>
                         <div class="gesture-label">Покажите жест:</div>
-                        <div class="gesture-name" id="gestureIcon">Загрузка...</div>
+                        <div class="gesture-name">{{ .gestureName }}</div>
                     </div>
                     <div class="gesture-progress">
                         <div class="gesture-progress-bar" id="gestureProgressBar"></div>
                     </div>
-                    <div class="gesture-status" id="gestureStatus">Загрузка модели распознавания жестов...</div>
+                    <div class="gesture-status" id="gestureStatus">Загрузка модели жестов...</div>
                 </div>
 
                 <button id="loginBtn" class="btn btn-primary btn-lg w-100 mb-3" disabled>
@@ -48,11 +48,52 @@
         </div>
     </div>
 </div>
+
+<script>
+    var GESTURE_DATA = {
+        gesture: "{{ .gesture }}",
+        token: "{{ .gestureToken }}"
+    };
+</script>
 {{ end }}
 
 {{ define "scripts" }}
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14/dist/face-api.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+
+<!-- Загрузка MediaPipe Hand Landmarker через module -->
+<script type="module">
+import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/+esm';
+
+const statusEl = document.getElementById('gestureStatus');
+
+try {
+    statusEl.textContent = 'Загрузка модели жестов...';
+
+    const filesetResolver = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
+    );
+
+    const handLandmarker = await HandLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            delegate: 'GPU'
+        },
+        runningMode: 'VIDEO',
+        numHands: 1
+    });
+
+    window.handLandmarker = handLandmarker;
+    window.dispatchEvent(new Event('hand-model-ready'));
+    console.log('MediaPipe HandLandmarker загружен');
+    statusEl.textContent = 'Модель жестов готова. Покажите жест камере.';
+} catch (e) {
+    console.error('Ошибка загрузки MediaPipe:', e);
+    statusEl.textContent = '⚠️ Ошибка загрузки модели жестов: ' + e.message;
+    statusEl.className = 'gesture-status warning';
+    window.dispatchEvent(new CustomEvent('hand-model-error', { detail: e.message }));
+}
+</script>
+
 <script src="/static/js/face-auth.js"></script>
 <script>
     initFaceAuth('login');
