@@ -1,0 +1,170 @@
+{{ define "content" }}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/projects">Проекты</a></li>
+        <li class="breadcrumb-item active">{{ .project.Name }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ .project.Name }}</h2>
+    {{ if .user.CanEdit }}
+    <div>
+        <a href="/projects/{{ .project.ID }}/edit" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Редактировать
+        </a>
+        <form action="/projects/{{ .project.ID }}/delete" method="POST" class="d-inline" onsubmit="return confirm('Удалить проект?')">
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Удалить
+            </button>
+        </form>
+    </div>
+    {{ end }}
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <span class="badge bg-{{ statusColor .project.Status }} mb-3">{{ statusLabel .project.Status }}</span>
+                {{ if .project.Description }}
+                <p>{{ .project.Description }}</p>
+                {{ end }}
+                <div class="row">
+                    {{ if .project.Address }}
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-geo-alt"></i> Адрес:</strong>
+                        <p class="mb-0">{{ .project.Address }}</p>
+                    </div>
+                    {{ end }}
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-cash"></i> Бюджет:</strong>
+                        <p class="mb-0">{{ formatMoney .project.Budget }} руб.</p>
+                    </div>
+                    {{ if .project.StartDate }}
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-calendar"></i> Начало:</strong>
+                        <p class="mb-0">{{ formatDate .project.StartDate }}</p>
+                    </div>
+                    {{ end }}
+                    {{ if .project.EndDate }}
+                    <div class="col-md-6 mb-2">
+                        <strong><i class="bi bi-calendar-check"></i> Окончание:</strong>
+                        <p class="mb-0">{{ formatDate .project.EndDate }}</p>
+                    </div>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Документы -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-file-earmark"></i> Документы</h5>
+                {{ if .user.CanEdit }}
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="bi bi-upload"></i> Загрузить
+                </button>
+                {{ end }}
+            </div>
+            <div class="card-body">
+                {{ if .project.Documents }}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th>Размер</th>
+                                <th>Загрузил</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .project.Documents }}
+                            <tr>
+                                <td>{{ .Name }}</td>
+                                <td><span class="badge bg-secondary">{{ docTypeLabel .DocType }}</span></td>
+                                <td>{{ formatSize .FileSize }}</td>
+                                <td>{{ .UploadedBy.Name }}</td>
+                                <td>
+                                    <a href="/projects/{{ $.project.ID }}/documents/{{ .ID }}/download" class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    {{ if $.user.CanEdit }}
+                                    <form action="/projects/{{ $.project.ID }}/documents/{{ .ID }}/delete" method="POST" class="d-inline" onsubmit="return confirm('Удалить документ?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {{ end }}
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+                {{ else }}
+                <p class="text-muted text-center my-3">Документов нет</p>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Информация</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Создатель:</strong> {{ .project.CreatedBy.Name }}</p>
+                <p><strong>Дата создания:</strong> {{ formatDate .project.CreatedAt }}</p>
+                <p><strong>Смет:</strong> {{ len .project.Estimates }}</p>
+                <p class="mb-0"><strong>Документов:</strong> {{ len .project.Documents }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно загрузки документа -->
+{{ if .user.CanEdit }}
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="/projects/{{ .project.ID }}/documents" method="POST" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">Загрузка документа</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" name="name" class="form-control" placeholder="Название документа">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Тип документа</label>
+                        <select name="doc_type" class="form-select">
+                            <option value="blueprint">Чертёж</option>
+                            <option value="permit">Разрешение</option>
+                            <option value="contract">Договор</option>
+                            <option value="report">Отчёт</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Файл</label>
+                        <input type="file" name="file" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{ end }}
+{{ end }}
+
+{{ template "layout" . }}

@@ -1,0 +1,160 @@
+{{ define "content" }}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/estimates">Сметы</a></li>
+        <li class="breadcrumb-item active">{{ if .editing }}Редактирование{{ else }}Новая смета{{ end }}</li>
+    </ol>
+</nav>
+
+<div class="card shadow">
+    <div class="card-body p-4">
+        <h3 class="mb-4">{{ if .editing }}Редактирование сметы{{ else }}Новая смета{{ end }}</h3>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Название сметы *</label>
+                <input type="text" id="estimateName" class="form-control" value="{{ if .editing }}{{ .estimate.Name }}{{ end }}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Проект *</label>
+                <select id="projectId" class="form-select">
+                    {{ $currentProjectID := 0 }}
+                    {{ if .editing }}{{ $currentProjectID = .estimate.ProjectID }}{{ end }}
+                    {{ range .projects }}
+                    <option value="{{ .ID }}" {{ if eq .ID $currentProjectID }}selected{{ end }}>{{ .Name }}</option>
+                    {{ end }}
+                </select>
+            </div>
+        </div>
+
+        <h5 class="mt-4 mb-3">Позиции сметы</h5>
+        <div class="table-responsive">
+            <table class="table" id="itemsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Наименование</th>
+                        <th style="width:120px">Ед. изм.</th>
+                        <th style="width:120px">Кол-во</th>
+                        <th style="width:150px">Цена за ед.</th>
+                        <th style="width:150px">Сумма</th>
+                        <th style="width:50px"></th>
+                    </tr>
+                </thead>
+                <tbody id="itemsBody">
+                </tbody>
+                <tfoot>
+                    <tr class="table-dark">
+                        <td colspan="4" class="text-end"><strong>ИТОГО:</strong></td>
+                        <td class="text-end"><strong id="totalAmount">0.00</strong> руб.</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <button type="button" class="btn btn-outline-success mb-4" onclick="addRow()">
+            <i class="bi bi-plus"></i> Добавить позицию
+        </button>
+
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary btn-lg" onclick="saveEstimate()">
+                <i class="bi bi-check-lg"></i> {{ if .editing }}Сохранить{{ else }}Создать{{ end }}
+            </button>
+            <a href="/estimates" class="btn btn-outline-secondary btn-lg">Отмена</a>
+        </div>
+    </div>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+const units = {{ marshal .units }};
+const editing = {{ if .editing }}true{{ else }}false{{ end }};
+const estimateId = {{ if .editing }}{{ .estimate.ID }}{{ else }}0{{ end }};
+const existingItems = {{ if .editing }}{{ marshal .estimate.Items }}{{ else }}[]{{ end }};
+
+function addRow(item) {
+    const tbody = document.getElementById('itemsBody');
+    const row = document.createElement('tr');
+
+    let unitOptions = units.map(u =>
+        `<option value="${u}" ${item && item.Unit === u ? 'selected' : ''}>${u}</option>`
+    ).join('');
+
+    row.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm item-name" value="${item ? item.Name : ''}" required></td>
+        <td><select class="form-select form-select-sm item-unit">${unitOptions}</select></td>
+        <td><input type="number" class="form-control form-control-sm item-qty" step="0.001" value="${item ? item.Quantity : ''}" oninput="calcRow(this)"></td>
+        <td><input type="number" class="form-control form-control-sm item-price" step="0.01" value="${item ? item.UnitPrice : ''}" oninput="calcRow(this)"></td>
+        <td class="text-end item-total pt-3">${item ? (item.Quantity * item.UnitPrice).toFixed(2) : '0.00'}</td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)"><i class="bi bi-x"></i></button></td>
+    `;
+    tbody.appendChild(row);
+    calcTotal();
+}
+
+function removeRow(btn) {
+    btn.closest('tr').remove();
+    calcTotal();
+}
+
+function calcRow(input) {
+    const row = input.closest('tr');
+    const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+    const price = parseFloat(row.querySelector('.item-price').value) || 0;
+    row.querySelector('.item-total').textContent = (qty * price).toFixed(2);
+    calcTotal();
+}
+
+function calcTotal() {
+    let total = 0;
+    document.querySelectorAll('.item-total').forEach(el => {
+        total += parseFloat(el.textContent) || 0;
+    });
+    document.getElementById('totalAmount').textContent = total.toFixed(2);
+}
+
+function saveEstimate() {
+    const name = document.getElementById('estimateName').value;
+    const projectId = parseInt(document.getElementById('projectId').value);
+
+    if (!name) { alert('Введите название сметы'); return; }
+
+    const items = [];
+    document.querySelectorAll('#itemsBody tr').forEach(row => {
+        const itemName = row.querySelector('.item-name').value;
+        if (!itemName) return;
+        items.push({
+            name: itemName,
+            unit: row.querySelector('.item-unit').value,
+            quantity: parseFloat(row.querySelector('.item-qty').value) || 0,
+            unit_price: parseFloat(row.querySelector('.item-price').value) || 0,
+        });
+    });
+
+    const url = editing ? `/api/estimates/${estimateId}` : '/api/estimates';
+    const method = editing ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, project_id: projectId, items })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        window.location.href = '/estimates/' + data.id;
+    })
+    .catch(err => alert('Ошибка: ' + err));
+}
+
+// Инициализация
+if (existingItems && existingItems.length > 0) {
+    existingItems.forEach(item => addRow(item));
+} else {
+    addRow();
+}
+</script>
+{{ end }}
+
+{{ template "layout" . }}

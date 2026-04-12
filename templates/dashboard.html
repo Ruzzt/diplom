@@ -1,0 +1,357 @@
+{{ define "content" }}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-speedometer2"></i> Панель управления</h2>
+    <span class="text-muted">Добро пожаловать, {{ .user.Name }}!</span>
+</div>
+
+<!-- Вкладки -->
+<ul class="nav nav-tabs nav-tabs-main" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="projects-tab" data-bs-toggle="tab" data-bs-target="#projects" type="button" role="tab">
+            <i class="bi bi-folder"></i> Проекты <span class="badge bg-primary ms-1">{{ .projectCount }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="estimates-tab" data-bs-toggle="tab" data-bs-target="#estimates" type="button" role="tab">
+            <i class="bi bi-calculator"></i> Сметы <span class="badge bg-primary ms-1">{{ .estimateCount }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab">
+            <i class="bi bi-file-earmark-text"></i> Документы <span class="badge bg-primary ms-1">{{ .documentCount }}</span>
+        </button>
+    </li>
+    {{ if .user.IsAdmin }}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
+            <i class="bi bi-people"></i> Пользователи <span class="badge bg-primary ms-1">{{ .userCount }}</span>
+        </button>
+    </li>
+    {{ end }}
+</ul>
+
+<!-- Содержимое вкладок -->
+<div class="tab-content mt-4" id="mainTabsContent">
+
+    <!-- ====== ПРОЕКТЫ ====== -->
+    <div class="tab-pane fade show active" id="projects" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-folder"></i> Все проекты</h5>
+                {{ if .user.CanEdit }}
+                <a href="/projects/new" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-lg"></i> Создать проект
+                </a>
+                {{ end }}
+            </div>
+            <div class="card-body p-0">
+                {{ if .projects }}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Статус</th>
+                                <th>Адрес</th>
+                                <th>Бюджет</th>
+                                <th>Дата создания</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .projects }}
+                            <tr style="cursor:pointer" onclick="window.location='/projects/{{ .ID }}'">
+                                <td><strong>{{ .Name }}</strong></td>
+                                <td><span class="badge bg-{{ statusColor .Status }}">{{ statusLabel .Status }}</span></td>
+                                <td>{{ truncate .Address 30 }}</td>
+                                <td>{{ formatMoney .Budget }} руб.</td>
+                                <td>{{ formatDate .CreatedAt }}</td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+                {{ else }}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-folder" style="font-size: 3rem;"></i>
+                    <p class="mt-3 mb-0">Проектов пока нет</p>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== СМЕТЫ ====== -->
+    <div class="tab-pane fade" id="estimates" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calculator"></i> Все сметы</h5>
+                {{ if .user.CanEdit }}
+                <a href="/estimates/new" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-lg"></i> Создать смету
+                </a>
+                {{ end }}
+            </div>
+            <div class="card-body p-0">
+                {{ if .estimates }}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Проект</th>
+                                <th>Сумма</th>
+                                <th>Создал</th>
+                                <th>Дата</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .estimates }}
+                            <tr style="cursor:pointer" onclick="window.location='/estimates/{{ .ID }}'">
+                                <td><strong>{{ .Name }}</strong></td>
+                                <td>{{ .Project.Name }}</td>
+                                <td>{{ formatMoney .TotalAmount }} руб.</td>
+                                <td>{{ .CreatedBy.Name }}</td>
+                                <td>{{ formatDate .CreatedAt }}</td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+                {{ else }}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-calculator" style="font-size: 3rem;"></i>
+                    <p class="mt-3 mb-0">Смет пока нет</p>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== ДОКУМЕНТЫ ====== -->
+    <div class="tab-pane fade" id="documents" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> Все документы</h5>
+                {{ if .user.CanEdit }}
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#corpUploadModal">
+                    <i class="bi bi-upload"></i> Загрузить документ
+                </button>
+                {{ end }}
+            </div>
+            <div class="card-body p-0">
+                {{ if .documents }}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th>Размер</th>
+                                <th>Проект</th>
+                                <th>Загрузил</th>
+                                <th>Дата</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .documents }}
+                            <tr>
+                                <td>{{ .Name }}</td>
+                                <td><span class="badge bg-secondary">{{ docTypeLabel .DocType }}</span></td>
+                                <td>{{ formatSize .FileSize }}</td>
+                                <td>{{ projectName . }}</td>
+                                <td>{{ .UploadedBy.Name }}</td>
+                                <td>{{ formatDate .CreatedAt }}</td>
+                                <td class="text-end">
+                                    <a href="/documents/{{ .ID }}/download" class="btn btn-sm btn-outline-success" title="Скачать">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    {{ if $.user.CanEdit }}
+                                    <form action="/documents/{{ .ID }}/delete" method="POST" class="d-inline"
+                                          onsubmit="return confirm('Удалить документ?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {{ end }}
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+                {{ else }}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-file-earmark-text" style="font-size: 3rem;"></i>
+                    <p class="mt-3 mb-0">Документов пока нет</p>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== ПОЛЬЗОВАТЕЛИ (только admin) ====== -->
+    {{ if .user.IsAdmin }}
+    <div class="tab-pane fade" id="users" role="tabpanel">
+        <!-- Заявки на подтверждение -->
+        {{ if .pendingUsers }}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning bg-opacity-10">
+                <h5 class="mb-0"><i class="bi bi-hourglass-split"></i> Заявки на подтверждение ({{ len .pendingUsers }})</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {{ range .pendingUsers }}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-warning">
+                            <div class="card-body">
+                                <h6 class="card-title mb-1">{{ .Name }}</h6>
+                                <p class="text-muted small mb-2">{{ .Email }}</p>
+                                <span class="badge bg-secondary mb-3">{{ roleLabel .Role }}</span>
+                                <p class="text-muted small mb-2">{{ formatDate .CreatedAt }}</p>
+                                <div class="d-flex gap-2">
+                                    <form method="POST" action="/admin/users/{{ .ID }}/approve" class="d-inline">
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="bi bi-check-lg"></i> Одобрить
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="/admin/users/{{ .ID }}/reject" class="d-inline">
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="bi bi-x-lg"></i> Отклонить
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+        {{ end }}
+
+        <!-- Активные пользователи -->
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-person-check"></i> Активные пользователи ({{ len .approvedUsers }})</h5>
+            </div>
+            <div class="card-body p-0">
+                {{ if .approvedUsers }}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Имя</th>
+                                <th>Email</th>
+                                <th>Роль</th>
+                                <th>Дата регистрации</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .approvedUsers }}
+                            <tr>
+                                <td>{{ .Name }}</td>
+                                <td>{{ .Email }}</td>
+                                <td>
+                                    <form method="POST" action="/admin/users/{{ .ID }}/role" class="d-flex gap-2 align-items-center">
+                                        <select name="role" class="form-select form-select-sm" style="width: auto;">
+                                            <option value="admin" {{ if eq .Role "admin" }}selected{{ end }}>Администратор</option>
+                                            <option value="director" {{ if eq .Role "director" }}selected{{ end }}>Директор</option>
+                                            <option value="accountant" {{ if eq .Role "accountant" }}selected{{ end }}>Бухгалтер</option>
+                                            <option value="manager" {{ if eq .Role "manager" }}selected{{ end }}>Менеджер</option>
+                                            <option value="engineer" {{ if eq .Role "engineer" }}selected{{ end }}>Инженер</option>
+                                            <option value="viewer" {{ if eq .Role "viewer" }}selected{{ end }}>Зритель</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-save"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td>{{ formatDate .CreatedAt }}</td>
+                                <td>
+                                    {{ if not .IsAdmin }}
+                                    <form method="POST" action="/admin/users/{{ .ID }}/delete"
+                                          onsubmit="return confirm('Удалить пользователя {{ .Name }}?')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {{ end }}
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+                {{ else }}
+                <div class="text-center py-4 text-muted">Нет активных пользователей</div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+    {{ end }}
+
+</div>
+
+<!-- Модальное окно загрузки корпоративного документа -->
+{{ if .user.CanEdit }}
+<div class="modal fade" id="corpUploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="/documents/upload" method="POST" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-upload"></i> Загрузка документа</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название</label>
+                        <input type="text" name="name" class="form-control" placeholder="Название документа">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Тип документа</label>
+                        <select name="doc_type" class="form-select">
+                            <option value="contract">Договор</option>
+                            <option value="permit">Разрешение</option>
+                            <option value="blueprint">Чертёж</option>
+                            <option value="report">Отчёт</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Файл</label>
+                        <input type="file" name="file" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{ end }}
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var hash = window.location.hash;
+    if (hash) {
+        var tab = document.querySelector('#mainTabs button[data-bs-target="' + hash + '"]');
+        if (tab) {
+            new bootstrap.Tab(tab).show();
+        }
+    }
+    document.querySelectorAll('#mainTabs button[data-bs-toggle="tab"]').forEach(function(btn) {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            history.replaceState(null, null, e.target.getAttribute('data-bs-target'));
+        });
+    });
+});
+</script>
+{{ end }}
+
+{{ template "layout" . }}

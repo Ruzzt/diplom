@@ -1,0 +1,62 @@
+{{ define "content" }}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-body text-center p-4">
+                <h2 class="mb-3"><i class="bi bi-building"></i> СтройКонтроль</h2>
+                <p class="text-muted mb-4">Вход в систему по распознаванию лица и жесту</p>
+
+                <div class="video-container mb-3">
+                    <video id="video" width="100%" autoplay muted playsinline></video>
+                    <canvas id="overlay" class="video-overlay"></canvas>
+                </div>
+
+                <div id="status" class="alert alert-info">
+                    <span id="statusText">Загрузка моделей распознавания...</span>
+                </div>
+
+                <!-- Блок проверки жестом -->
+                <div id="gestureChallenge" class="gesture-challenge d-none">
+                    <div class="gesture-challenge-header">
+                        <i class="bi bi-shield-lock"></i> Проверка безопасности
+                    </div>
+                    <div class="gesture-challenge-body">
+                        <div class="gesture-emoji" id="gestureEmoji"></div>
+                        <div class="gesture-label">Покажите жест:</div>
+                        <div class="gesture-name" id="gestureIcon"></div>
+                    </div>
+                    <div class="gesture-progress">
+                        <div class="gesture-progress-bar" id="gestureProgressBar"></div>
+                    </div>
+                    <div class="gesture-status" id="gestureStatus">Ожидание жеста...</div>
+                </div>
+
+                <button id="loginBtn" class="btn btn-primary btn-lg w-100 mb-3" disabled>
+                    <i class="bi bi-person-check"></i> Войти по лицу
+                </button>
+
+                <div id="userInfo" class="d-none">
+                    <div class="alert alert-success">
+                        <strong id="userName"></strong>
+                        <br><span class="badge bg-primary mt-1" id="userRole"></span>
+                    </div>
+                </div>
+
+                <hr>
+                <p class="mb-0">Первый раз? <a href="/register">Зарегистрироваться</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14/dist/face-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+<script src="/static/js/face-auth.js"></script>
+<script>
+    initFaceAuth('login');
+</script>
+{{ end }}
+
+{{ template "layout" . }}

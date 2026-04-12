@@ -1,0 +1,78 @@
+{{ define "content" }}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/estimates">Сметы</a></li>
+        <li class="breadcrumb-item active">{{ .estimate.Name }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ .estimate.Name }}</h2>
+    {{ if .user.CanEdit }}
+    <div>
+        <a href="/estimates/{{ .estimate.ID }}/edit" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Редактировать
+        </a>
+        <form action="/estimates/{{ .estimate.ID }}/delete" method="POST" class="d-inline" onsubmit="return confirm('Удалить смету?')">
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Удалить
+            </button>
+        </form>
+    </div>
+    {{ end }}
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <p><strong>Проект:</strong> <a href="/projects/{{ .estimate.Project.ID }}">{{ .estimate.Project.Name }}</a></p>
+        <p><strong>Создал:</strong> {{ .estimate.CreatedBy.Name }}</p>
+        <p class="mb-0"><strong>Дата:</strong> {{ formatDate .estimate.CreatedAt }}</p>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header">
+        <h5 class="mb-0">Позиции сметы</h5>
+    </div>
+    <div class="card-body">
+        {{ if .estimate.Items }}
+        <div class="table-responsive">
+            <table class="table">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Наименование</th>
+                        <th>Ед. изм.</th>
+                        <th class="text-end">Кол-во</th>
+                        <th class="text-end">Цена за ед.</th>
+                        <th class="text-end">Сумма</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range $i, $item := .estimate.Items }}
+                    <tr>
+                        <td>{{ inc $i }}</td>
+                        <td>{{ $item.Name }}</td>
+                        <td>{{ $item.Unit }}</td>
+                        <td class="text-end">{{ $item.Quantity }}</td>
+                        <td class="text-end">{{ formatMoney $item.UnitPrice }}</td>
+                        <td class="text-end">{{ formatMoney $item.TotalPrice }}</td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+                <tfoot class="table-dark">
+                    <tr>
+                        <td colspan="5" class="text-end"><strong>ИТОГО:</strong></td>
+                        <td class="text-end"><strong>{{ formatMoney .estimate.TotalAmount }} руб.</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {{ else }}
+        <p class="text-muted text-center">Позиций нет</p>
+        {{ end }}
+    </div>
+</div>
+{{ end }}
+
+{{ template "layout" . }}

@@ -1,0 +1,68 @@
+{{ define "content" }}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/projects">Проекты</a></li>
+        <li class="breadcrumb-item active">{{ if .editing }}Редактирование{{ else }}Новый проект{{ end }}</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body p-4">
+                <h3 class="mb-4">{{ if .editing }}Редактирование проекта{{ else }}Новый проект{{ end }}</h3>
+
+                <form action="{{ if .editing }}/projects/{{ .project.ID }}/edit{{ else }}/projects{{ end }}" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Название проекта *</label>
+                        <input type="text" name="name" class="form-control" value="{{ if .editing }}{{ .project.Name }}{{ end }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="3">{{ if .editing }}{{ .project.Description }}{{ end }}</textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Статус</label>
+                            <select name="status" class="form-select">
+                                {{ $currentStatus := "" }}
+                                {{ if .editing }}{{ $currentStatus = .project.Status }}{{ end }}
+                                <option value="planning" {{ if eq $currentStatus "planning" }}selected{{ end }}>Планирование</option>
+                                <option value="active" {{ if eq $currentStatus "active" }}selected{{ end }}>В работе</option>
+                                <option value="completed" {{ if eq $currentStatus "completed" }}selected{{ end }}>Завершён</option>
+                                <option value="suspended" {{ if eq $currentStatus "suspended" }}selected{{ end }}>Приостановлен</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Бюджет (руб.)</label>
+                            <input type="number" name="budget" class="form-control" step="0.01" value="{{ if .editing }}{{ .project.Budget }}{{ end }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Адрес</label>
+                        <input type="text" name="address" class="form-control" value="{{ if .editing }}{{ .project.Address }}{{ end }}">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата начала</label>
+                            <input type="date" name="start_date" class="form-control" {{ if and .editing .project.StartDate }}value="{{ formatDateInput .project.StartDate }}"{{ end }}>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" name="end_date" class="form-control" {{ if and .editing .project.EndDate }}value="{{ formatDateInput .project.EndDate }}"{{ end }}>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> {{ if .editing }}Сохранить{{ else }}Создать{{ end }}
+                        </button>
+                        <a href="/projects" class="btn btn-outline-secondary">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
+
+{{ template "layout" . }}

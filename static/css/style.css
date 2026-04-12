@@ -1,0 +1,229 @@
+body {
+    background-color: #f5f6fa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.3rem;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #eee;
+}
+
+.shadow-sm {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.shadow {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+.video-container {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+}
+
+.video-container video {
+    display: block;
+    border-radius: 10px;
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #666;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.8em;
+}
+
+.btn {
+    border-radius: 8px;
+}
+
+.btn-lg {
+    padding: 0.6rem 1.5rem;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+}
+
+/* Статусы проектов */
+.bg-planning { background-color: #6c757d !important; }
+.bg-active { background-color: #198754 !important; }
+.bg-completed { background-color: #0d6efd !important; }
+.bg-suspended { background-color: #dc3545 !important; }
+
+/* Анимация */
+.card {
+    transition: transform 0.15s;
+}
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Таблицы */
+.table-hover tbody tr:hover {
+    background-color: #f0f7ff;
+}
+
+/* Логин/Регистрация */
+#status {
+    font-size: 0.9rem;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+/* Вкладки */
+.nav-tabs-main .nav-link {
+    color: #555;
+    font-weight: 500;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px 8px 0 0;
+}
+
+.nav-tabs-main .nav-link.active {
+    color: #0d6efd;
+    font-weight: 600;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.nav-tabs-main .nav-link:hover:not(.active) {
+    color: #0d6efd;
+    border-color: transparent;
+    background-color: #f0f7ff;
+}
+
+.tab-content .card {
+    border-top-left-radius: 0;
+}
+
+/* Блок проверки жестом */
+.gesture-challenge {
+    border: 3px solid #ffc107;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    padding: 0;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: border-color 0.3s, background 0.3s;
+}
+
+.gesture-challenge.confirmed {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #e8f5e9 0%, #d4edda 100%);
+}
+
+.gesture-challenge-header {
+    background: #ffc107;
+    color: #333;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.5rem 1rem;
+}
+
+.gesture-challenge.confirmed .gesture-challenge-header {
+    background: #28a745;
+    color: #fff;
+}
+
+.gesture-challenge-body {
+    padding: 1rem;
+}
+
+.gesture-emoji {
+    font-size: 4rem;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.gesture-label {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.gesture-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.gesture-progress {
+    height: 6px;
+    background: #e9ecef;
+    margin: 0 1rem;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.gesture-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ffc107, #28a745);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.gesture-status {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.gesture-status.success {
+    color: #28a745;
+    font-weight: 700;
+}
+
+.gesture-status.warning {
+    color: #e67e00;
+}
+
+.gesture-status.detecting {
+    color: #0d6efd;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .card:hover {
+        transform: none;
+    }
+
+    .nav-tabs-main .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+}

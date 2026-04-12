@@ -1,0 +1,45 @@
+{{ define "layout" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }} — СтройКонтроль</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    {{ if .user }}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="bi bi-building"></i> СтройКонтроль
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <span class="nav-link text-light">
+                        <i class="bi bi-person-circle"></i> {{ .user.Name }}
+                        <span class="badge bg-light text-primary ms-1">{{ .user.Role }}</span>
+                    </span>
+                    <a class="nav-link" href="/logout">
+                        <i class="bi bi-box-arrow-right"></i> Выход
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {{ end }}
+
+    <main class="container mt-4 mb-5">
+        {{ template "content" . }}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{ block "scripts" . }}{{ end }}
+</body>
+</html>
+{{ end }}
