@@ -138,6 +138,32 @@ func Dashboard(c *gin.Context) {
 		database.DB.Where("status = ?", "approved").Order("created_at desc").Find(&approvedUsers)
 	}
 
+	// Аналитика по статусам проектов
+	statusCounts := map[string]int{
+		"planning": 0, "active": 0, "completed": 0, "suspended": 0,
+	}
+	for _, p := range projects {
+		statusCounts[p.Status]++
+	}
+
+	// Общий бюджет
+	var totalBudget float64
+	for _, p := range projects {
+		totalBudget += p.Budget
+	}
+
+	// Общая сумма смет
+	var totalEstimates float64
+	for _, e := range estimates {
+		totalEstimates += e.TotalAmount
+	}
+
+	// Средний бюджет
+	var avgBudget float64
+	if len(projects) > 0 {
+		avgBudget = totalBudget / float64(len(projects))
+	}
+
 	c.HTML(http.StatusOK, "dashboard.html", gin.H{
 		"title":         "Панель управления",
 		"user":          user,
@@ -151,6 +177,14 @@ func Dashboard(c *gin.Context) {
 		"estimateCount": int64(len(estimates)),
 		"documentCount": int64(len(documents)),
 		"userCount":     int64(len(approvedUsers) + len(pendingUsers)),
+		// Аналитика
+		"planningCount":  statusCounts["planning"],
+		"activeCount":    statusCounts["active"],
+		"completedCount": statusCounts["completed"],
+		"suspendedCount": statusCounts["suspended"],
+		"totalBudget":    totalBudget,
+		"totalEstimates": totalEstimates,
+		"avgBudget":      avgBudget,
 	})
 }
 

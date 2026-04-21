@@ -71,11 +71,16 @@ body {
     border-radius: 8px;
 }
 
+/* Навбар — тёмно-зелёный */
+.navbar-dark.bg-dark-green {
+    background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%) !important;
+}
+
 /* Статусы проектов */
 .bg-planning { background-color: #6c757d !important; }
-.bg-active { background-color: #198754 !important; }
-.bg-completed { background-color: #0d6efd !important; }
-.bg-suspended { background-color: #dc3545 !important; }
+.bg-active { background-color: #2d6a4f !important; }
+.bg-completed { background-color: #1b4332 !important; }
+.bg-suspended { background-color: #c1121f !important; }
 
 /* Анимация */
 .card {
@@ -87,7 +92,7 @@ body {
 
 /* Таблицы */
 .table-hover tbody tr:hover {
-    background-color: #f0f7ff;
+    background-color: #e8f5e9;
 }
 
 /* Логин/Регистрация */
@@ -116,19 +121,46 @@ body {
 }
 
 .nav-tabs-main .nav-link.active {
-    color: #0d6efd;
+    color: #2d6a4f;
     font-weight: 600;
     border-color: #dee2e6 #dee2e6 #fff;
 }
 
 .nav-tabs-main .nav-link:hover:not(.active) {
-    color: #0d6efd;
+    color: #2d6a4f;
     border-color: transparent;
-    background-color: #f0f7ff;
+    background-color: #e8f5e9;
 }
 
 .tab-content .card {
     border-top-left-radius: 0;
+}
+
+/* Кнопки — зелёная тема */
+.btn-primary {
+    background-color: #2d6a4f;
+    border-color: #2d6a4f;
+}
+
+.btn-primary:hover {
+    background-color: #1b4332;
+    border-color: #1b4332;
+}
+
+.btn-outline-primary {
+    color: #2d6a4f;
+    border-color: #2d6a4f;
+}
+
+.btn-outline-primary:hover {
+    background-color: #2d6a4f;
+    border-color: #2d6a4f;
+    color: #fff;
+}
+
+/* Бейджи на вкладках */
+.nav-tabs-main .badge {
+    background-color: #2d6a4f !important;
 }
 
 /* Блок проверки жестом */
@@ -143,7 +175,7 @@ body {
 }
 
 .gesture-challenge.confirmed {
-    border-color: #28a745;
+    border-color: #2d6a4f;
     background: linear-gradient(135deg, #e8f5e9 0%, #d4edda 100%);
 }
 
@@ -158,7 +190,7 @@ body {
 }
 
 .gesture-challenge.confirmed .gesture-challenge-header {
-    background: #28a745;
+    background: #2d6a4f;
     color: #fff;
 }
 
@@ -195,7 +227,7 @@ body {
 .gesture-progress-bar {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #ffc107, #28a745);
+    background: linear-gradient(90deg, #ffc107, #2d6a4f);
     border-radius: 3px;
     transition: width 0.3s ease;
 }
@@ -207,7 +239,7 @@ body {
 }
 
 .gesture-status.success {
-    color: #28a745;
+    color: #2d6a4f;
     font-weight: 700;
 }
 
@@ -218,6 +250,34 @@ body {
 .gesture-status.detecting {
     color: #0d6efd;
 }
+
+/* Карточки аналитики */
+.analytics-card {
+    border-radius: 10px;
+    color: #fff;
+    padding: 1.25rem;
+}
+
+.analytics-card .analytics-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.analytics-card .analytics-label {
+    font-size: 0.85rem;
+    opacity: 0.85;
+}
+
+.analytics-card i {
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
+.bg-green-1 { background: linear-gradient(135deg, #2d6a4f, #40916c); }
+.bg-green-2 { background: linear-gradient(135deg, #1b4332, #2d6a4f); }
+.bg-green-3 { background: linear-gradient(135deg, #40916c, #52b788); }
+.bg-green-4 { background: linear-gradient(135deg, #081c15, #1b4332); }
 
 /* Адаптивность */
 @media (max-width: 768px) {

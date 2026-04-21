@@ -21,6 +21,11 @@
             <i class="bi bi-file-earmark-text"></i> Документы <span class="badge bg-primary ms-1">{{ .documentCount }}</span>
         </button>
     </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+            <i class="bi bi-bar-chart-line"></i> Аналитика
+        </button>
+    </li>
     {{ if .user.IsAdmin }}
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
@@ -185,6 +190,144 @@
                     <i class="bi bi-file-earmark-text" style="font-size: 3rem;"></i>
                     <p class="mt-3 mb-0">Документов пока нет</p>
                 </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== АНАЛИТИКА ====== -->
+    <div class="tab-pane fade" id="analytics" role="tabpanel">
+        <!-- Карточки-счётчики -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3 col-6">
+                <div class="analytics-card bg-green-1">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="analytics-value">{{ .projectCount }}</div>
+                            <div class="analytics-label">Всего проектов</div>
+                        </div>
+                        <i class="bi bi-folder"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="analytics-card bg-green-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="analytics-value">{{ .estimateCount }}</div>
+                            <div class="analytics-label">Всего смет</div>
+                        </div>
+                        <i class="bi bi-calculator"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="analytics-card bg-green-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="analytics-value">{{ .documentCount }}</div>
+                            <div class="analytics-label">Документов</div>
+                        </div>
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="analytics-card bg-green-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="analytics-value">{{ .userCount }}</div>
+                            <div class="analytics-label">Пользователей</div>
+                        </div>
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <!-- Статусы проектов -->
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Статусы проектов</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom: 1px solid #eee;">
+                            <span><span class="badge bg-planning">Планирование</span></span>
+                            <strong class="fs-5">{{ .planningCount }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom: 1px solid #eee;">
+                            <span><span class="badge bg-active">Активные</span></span>
+                            <strong class="fs-5">{{ .activeCount }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom: 1px solid #eee;">
+                            <span><span class="badge bg-completed">Завершённые</span></span>
+                            <strong class="fs-5">{{ .completedCount }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><span class="badge bg-suspended">Приостановлены</span></span>
+                            <strong class="fs-5">{{ .suspendedCount }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Финансы -->
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Финансовая сводка</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <small class="text-muted text-uppercase">Общий бюджет проектов</small>
+                            <h3 class="mb-0" style="color: #2d6a4f;">{{ formatMoney .totalBudget }} руб.</h3>
+                        </div>
+                        <div class="mb-4">
+                            <small class="text-muted text-uppercase">Общая сумма смет</small>
+                            <h3 class="mb-0" style="color: #1b4332;">{{ formatMoney .totalEstimates }} руб.</h3>
+                        </div>
+                        <div>
+                            <small class="text-muted text-uppercase">Средний бюджет проекта</small>
+                            <h3 class="mb-0" style="color: #40916c;">{{ formatMoney .avgBudget }} руб.</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Последние проекты -->
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Последние проекты</h5>
+            </div>
+            <div class="card-body p-0">
+                {{ if .projects }}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Статус</th>
+                                <th>Бюджет</th>
+                                <th>Создан</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .projects }}
+                            <tr style="cursor:pointer" onclick="window.location='/projects/{{ .ID }}'">
+                                <td><strong>{{ .Name }}</strong></td>
+                                <td><span class="badge bg-{{ statusColor .Status }}">{{ statusLabel .Status }}</span></td>
+                                <td>{{ formatMoney .Budget }} руб.</td>
+                                <td>{{ formatDate .CreatedAt }}</td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+                {{ else }}
+                <div class="text-center py-4 text-muted">Проектов пока нет</div>
                 {{ end }}
             </div>
         </div>
