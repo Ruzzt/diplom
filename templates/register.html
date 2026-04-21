@@ -1,9 +1,21 @@
 {{ define "content" }}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-6">
+<div class="row justify-content-center mt-4">
+    <div class="col-md-5">
+        <div class="text-center mb-3">
+            <a href="/" style="text-decoration: none;">
+                <span style="font-weight: 900; font-size: 1.6rem; letter-spacing: -0.5px; color: var(--dark);">Строй<span style="color: var(--blue);">Контроль</span></span>
+            </a>
+        </div>
+
         <div class="card shadow">
             <div class="card-body p-4">
-                <h2 class="text-center mb-4"><i class="bi bi-person-plus"></i> Регистрация</h2>
+                <div class="text-center">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; background: #ECFDF5; border-radius: 14px; margin-bottom: 0.75rem;">
+                        <i class="bi bi-person-plus" style="font-size: 1.4rem; color: var(--green);"></i>
+                    </div>
+                    <h3 class="mb-1" style="font-weight: 800; letter-spacing: -0.5px;">Регистрация</h3>
+                    <p class="text-muted mb-3" style="font-size: 0.88rem;">Создайте аккаунт с биометрией</p>
+                </div>
 
                 <div class="mb-3">
                     <label class="form-label">Имя</label>
@@ -35,12 +47,11 @@
                     <span id="statusText">Загрузка моделей распознавания...</span>
                 </div>
 
-                <button id="registerBtn" class="btn btn-success btn-lg w-100 mt-3" disabled>
-                    <i class="bi bi-person-check"></i> Зарегистрироваться
+                <button id="registerBtn" class="btn btn-primary btn-lg w-100 mt-2" disabled>
+                    Зарегистрироваться
                 </button>
 
-                <hr>
-                <p class="text-center mb-0">Уже есть аккаунт? <a href="/login">Войти</a></p>
+                <p class="text-center mt-3 mb-0 text-muted" style="font-size: 0.88rem;">Уже есть аккаунт? <a href="/login" style="color: var(--blue); font-weight: 600; text-decoration: none;">Войти</a></p>
             </div>
         </div>
     </div>
