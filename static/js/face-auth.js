@@ -157,7 +157,7 @@ function processHandResults(results) {
 
             if (gestureMatchCount >= GESTURE_CONFIRM_COUNT) {
                 gestureConfirmed = true;
-                gestureStatusEl.textContent = '✅ Жест подтверждён! Нажмите кнопку входа.';
+                gestureStatusEl.textContent = 'Жест подтверждён! Нажмите кнопку входа.';
                 gestureStatusEl.className = 'gesture-status success';
 
                 document.getElementById('gestureChallenge').classList.add('confirmed');
