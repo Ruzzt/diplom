@@ -24,6 +24,7 @@ func main() {
 	// Подключение к БД
 	database.Connect(cfg)
 	database.Migrate()
+	database.Seed()
 
 	// Настройка JWT
 	middleware.SetJWTSecret(cfg.JWTSecret)
