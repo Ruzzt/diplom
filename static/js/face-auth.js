@@ -213,18 +213,27 @@ function getExtendedFingers(lm) {
 
 async function detectFaceLoop() {
     const overlay = document.getElementById('overlay');
-    const displaySize = { width: video.videoWidth, height: video.videoHeight };
 
-    if (displaySize.width === 0) {
+    // Ждём пока видео получит реальные размеры
+    if (video.videoWidth === 0) {
         setTimeout(detectFaceLoop, 100);
         return;
     }
 
-    overlay.width = displaySize.width;
-    overlay.height = displaySize.height;
-    faceapi.matchDimensions(overlay, displaySize);
-
     setInterval(async () => {
+        // Каждый раз берём актуальный отображаемый размер видео
+        const rect = video.getBoundingClientRect();
+        const displaySize = { width: rect.width, height: rect.height };
+
+        // Синхронизируем canvas с отображаемым размером
+        if (overlay.width !== displaySize.width || overlay.height !== displaySize.height) {
+            overlay.width = displaySize.width;
+            overlay.height = displaySize.height;
+            // Убираем CSS-размеры, чтобы canvas совпадал пиксель-в-пиксель
+            overlay.style.width = displaySize.width + 'px';
+            overlay.style.height = displaySize.height + 'px';
+        }
+
         const detections = await faceapi.detectAllFaces(
             video,
             new faceapi.TinyFaceDetectorOptions()

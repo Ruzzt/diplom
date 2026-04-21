@@ -1,20 +1,15 @@
 {{ define "content" }}
-<div class="row justify-content-center mt-4">
-    <div class="col-md-5">
-        <div class="text-center mb-3">
-            <a href="/" style="text-decoration: none;">
-                <span style="font-weight: 900; font-size: 1.6rem; letter-spacing: -0.5px; color: var(--dark);">Строй<span style="color: var(--blue);">Контроль</span></span>
-            </a>
-        </div>
+<div class="text-center mb-3 mt-4">
+    <a href="/" style="text-decoration: none;">
+        <span style="font-weight: 900; font-size: 1.6rem; letter-spacing: -0.5px; color: var(--dark);">Строй<span style="color: var(--blue);">Контроль</span></span>
+    </a>
+</div>
 
-        <div class="card shadow">
-            <div class="card-body text-center p-4">
-                <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; background: var(--blue-light); border-radius: 14px; margin-bottom: 0.75rem;">
-                    <i class="bi bi-person-bounding-box" style="font-size: 1.4rem; color: var(--blue);"></i>
-                </div>
-                <h3 class="mb-1" style="font-weight: 800; letter-spacing: -0.5px;">Вход</h3>
-                <p class="text-muted mb-3" style="font-size: 0.88rem;">Распознавание лица + проверка жестом</p>
-
+<div class="row justify-content-center">
+    <!-- Камера -->
+    <div class="col-lg-5 col-md-6 mb-4 mb-lg-0">
+        <div class="card shadow h-100">
+            <div class="card-body p-4">
                 <div class="video-container mb-3">
                     <video id="video" width="100%" autoplay muted playsinline></video>
                     <canvas id="overlay" class="video-overlay"></canvas>
@@ -23,6 +18,26 @@
                 <div id="status" class="alert alert-info">
                     <span id="statusText">Загрузка моделей распознавания...</span>
                 </div>
+
+                <div id="userInfo" class="d-none">
+                    <div class="alert alert-success">
+                        <strong id="userName"></strong>
+                        <br><span class="badge bg-primary mt-1" id="userRole"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Жест и кнопка -->
+    <div class="col-lg-4 col-md-6">
+        <div class="card shadow h-100">
+            <div class="card-body text-center p-4 d-flex flex-column justify-content-center">
+                <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; background: var(--blue-light); border-radius: 14px; margin: 0 auto 0.75rem;">
+                    <i class="bi bi-person-bounding-box" style="font-size: 1.4rem; color: var(--blue);"></i>
+                </div>
+                <h3 class="mb-1" style="font-weight: 800; letter-spacing: -0.5px;">Вход</h3>
+                <p class="text-muted mb-3" style="font-size: 0.88rem;">Распознавание лица + проверка жестом</p>
 
                 <div id="gestureChallenge" class="gesture-challenge">
                     <div class="gesture-challenge-header">
@@ -42,13 +57,6 @@
                 <button id="loginBtn" class="btn btn-primary btn-lg w-100 mb-3" disabled>
                     Войти по лицу
                 </button>
-
-                <div id="userInfo" class="d-none">
-                    <div class="alert alert-success">
-                        <strong id="userName"></strong>
-                        <br><span class="badge bg-primary mt-1" id="userRole"></span>
-                    </div>
-                </div>
 
                 <p class="mb-0 text-muted" style="font-size: 0.88rem;">Нет аккаунта? <a href="/register" style="color: var(--blue); font-weight: 600; text-decoration: none;">Зарегистрироваться</a></p>
             </div>

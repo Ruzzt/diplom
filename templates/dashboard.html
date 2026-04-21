@@ -199,7 +199,6 @@
 
     <!-- ====== АНАЛИТИКА ====== -->
     <div class="tab-pane fade" id="analytics" role="tabpanel">
-        <!-- Карточки-счётчики -->
         <div class="row g-3 mb-4">
             <div class="col-md-3 col-6">
                 <div class="analytics-card bg-green-1">
@@ -248,7 +247,6 @@
         </div>
 
         <div class="row g-3 mb-4">
-            <!-- Статусы проектов -->
             <div class="col-md-6">
                 <div class="card shadow-sm">
                     <div class="card-header">
@@ -275,7 +273,6 @@
                 </div>
             </div>
 
-            <!-- Финансы -->
             <div class="col-md-6">
                 <div class="card shadow-sm">
                     <div class="card-header">
@@ -284,53 +281,18 @@
                     <div class="card-body">
                         <div class="mb-4">
                             <small class="text-muted text-uppercase">Общий бюджет проектов</small>
-                            <h3 class="mb-0" style="color: #2d6a4f;">{{ formatMoney .totalBudget }} руб.</h3>
+                            <h3 class="mb-0" style="color: var(--blue);">{{ formatMoney .totalBudget }} руб.</h3>
                         </div>
                         <div class="mb-4">
                             <small class="text-muted text-uppercase">Общая сумма смет</small>
-                            <h3 class="mb-0" style="color: #1b4332;">{{ formatMoney .totalEstimates }} руб.</h3>
+                            <h3 class="mb-0" style="color: var(--dark);">{{ formatMoney .totalEstimates }} руб.</h3>
                         </div>
                         <div>
                             <small class="text-muted text-uppercase">Средний бюджет проекта</small>
-                            <h3 class="mb-0" style="color: #40916c;">{{ formatMoney .avgBudget }} руб.</h3>
+                            <h3 class="mb-0" style="color: var(--green);">{{ formatMoney .avgBudget }} руб.</h3>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Последние проекты -->
-        <div class="card shadow-sm">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Последние проекты</h5>
-            </div>
-            <div class="card-body p-0">
-                {{ if .projects }}
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Название</th>
-                                <th>Статус</th>
-                                <th>Бюджет</th>
-                                <th>Создан</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{ range .projects }}
-                            <tr style="cursor:pointer" onclick="window.location='/projects/{{ .ID }}'">
-                                <td><strong>{{ .Name }}</strong></td>
-                                <td><span class="badge bg-{{ statusColor .Status }}">{{ statusLabel .Status }}</span></td>
-                                <td>{{ formatMoney .Budget }} руб.</td>
-                                <td>{{ formatDate .CreatedAt }}</td>
-                            </tr>
-                            {{ end }}
-                        </tbody>
-                    </table>
-                </div>
-                {{ else }}
-                <div class="text-center py-4 text-muted">Проектов пока нет</div>
-                {{ end }}
             </div>
         </div>
     </div>
@@ -338,7 +300,6 @@
     <!-- ====== ПОЛЬЗОВАТЕЛИ (только admin) ====== -->
     {{ if .user.IsAdmin }}
     <div class="tab-pane fade" id="users" role="tabpanel">
-        <!-- Заявки на подтверждение -->
         {{ if .pendingUsers }}
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-warning bg-opacity-10">
@@ -375,7 +336,6 @@
         </div>
         {{ end }}
 
-        <!-- Активные пользователи -->
         <div class="card shadow-sm">
             <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-person-check"></i> Активные пользователи ({{ len .approvedUsers }})</h5>

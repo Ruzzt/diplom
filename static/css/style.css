@@ -31,18 +31,11 @@
 * { box-sizing: border-box; }
 
 body {
-    background: linear-gradient(160deg, #EEF2FF 0%, #F0F9FF 30%, #F7F8FA 60%, #FFF7ED 100%);
-    background-attachment: fixed;
+    background: var(--bg);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
-}
-
-/* Страницы входа/регистрации/приветствия */
-body.auth-page {
-    background: linear-gradient(160deg, #EEF2FF 0%, #DBEAFE 40%, #E0F2FE 70%, #F0F9FF 100%);
-    background-attachment: fixed;
 }
 
 /* ======== Навбар ======== */
