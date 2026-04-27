@@ -4,6 +4,7 @@ import (
 	"face-auth-system/database"
 	"face-auth-system/middleware"
 	"face-auth-system/models"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,10 +14,17 @@ import (
 
 // ProjectsList отображает список проектов
 func ProjectsList(c *gin.Context) {
-	var projects []models.Project
-	database.DB.Preload("CreatedBy").Order("created_at desc").Find(&projects)
-
 	user := middleware.GetCurrentUser(c)
+
+	var projects []models.Project
+	if user.IsAdmin() {
+		database.DB.Preload("CreatedBy").Order("created_at desc").Find(&projects)
+	} else {
+		database.DB.Preload("CreatedBy").
+			Joins("JOIN project_assignments ON project_assignments.project_id = projects.id AND project_assignments.user_id = ?", user.ID).
+			Order("projects.created_at desc").Find(&projects)
+	}
+
 	c.HTML(http.StatusOK, "projects.html", gin.H{
 		"title":    "Проекты",
 		"projects": projects,
@@ -38,11 +46,25 @@ func ProjectDetail(c *gin.Context) {
 	}
 
 	user := middleware.GetCurrentUser(c)
+
+	if !userCanAccessProject(user.ID, project.ID, user.Role) {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Доступ запрещён",
+			"message": "У вас нет доступа к этому проекту",
+		})
+		return
+	}
+
+	// Назначенные пользователи
+	var assignments []models.ProjectAssignment
+	database.DB.Preload("User").Where("project_id = ?", project.ID).Find(&assignments)
+
 	c.HTML(http.StatusOK, "project_detail.html", gin.H{
-		"title":   project.Name,
-		"project": project,
-		"user":    user,
-		"active":  "projects",
+		"title":       project.Name,
+		"project":     project,
+		"user":        user,
+		"active":      "projects",
+		"assignments": assignments,
 	})
 }
 
@@ -99,6 +121,15 @@ func ProjectCreate(c *gin.Context) {
 		return
 	}
 
+	// Автоматически назначаем создателя на проект
+	database.DB.Create(&models.ProjectAssignment{
+		ProjectID:  project.ID,
+		UserID:     user.ID,
+		AssignedBy: user.ID,
+	})
+
+	LogAction(c, user.ID, "create_project", "project", project.ID, "Создан проект: "+name)
+
 	c.Redirect(http.StatusFound, "/projects/"+strconv.Itoa(int(project.ID)))
 }
 
@@ -127,6 +158,7 @@ func ProjectEditPage(c *gin.Context) {
 
 // ProjectUpdate обрабатывает обновление проекта
 func ProjectUpdate(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
 	id := c.Param("id")
 	var project models.Project
 	if err := database.DB.First(&project, id).Error; err != nil {
@@ -159,12 +191,32 @@ func ProjectUpdate(c *gin.Context) {
 	}
 
 	database.DB.Save(&project)
+
+	LogAction(c, user.ID, "update_project", "project", project.ID, "Обновлён проект: "+project.Name)
+
 	c.Redirect(http.StatusFound, "/projects/"+id)
 }
 
-// ProjectDelete удаляет проект
+// ProjectDelete удаляет проект (требует подтверждения жестом)
 func ProjectDelete(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
 	id := c.Param("id")
+
+	actionToken := c.PostForm("action_token")
+	if !middleware.ValidateActionToken(actionToken, user.ID) {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Отказано",
+			"message": "Требуется подтверждение жестом для удаления проекта",
+		})
+		return
+	}
+
+	var project models.Project
+	database.DB.First(&project, id)
+
+	LogAction(c, user.ID, "delete_project", "project", project.ID,
+		fmt.Sprintf("Удалён проект: %s", project.Name))
+
 	database.DB.Delete(&models.Project{}, id)
-	c.Redirect(http.StatusFound, "/projects")
+	c.Redirect(http.StatusFound, "/dashboard#projects")
 }

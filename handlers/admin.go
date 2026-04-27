@@ -4,6 +4,7 @@ import (
 	"face-auth-system/database"
 	"face-auth-system/middleware"
 	"face-auth-system/models"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -40,10 +41,12 @@ func AdminApproveUser(c *gin.Context) {
 		return
 	}
 
+	user := middleware.GetCurrentUser(c)
 	targetUser.Status = "approved"
 	database.DB.Save(&targetUser)
+	LogAction(c, user.ID, "approve_user", "user", targetUser.ID, "Одобрен: "+targetUser.Email)
 
-	c.Redirect(http.StatusFound, "/admin/users")
+	c.Redirect(http.StatusFound, "/dashboard#users")
 }
 
 // AdminRejectUser отклоняет заявку пользователя
@@ -59,16 +62,28 @@ func AdminRejectUser(c *gin.Context) {
 		return
 	}
 
+	user := middleware.GetCurrentUser(c)
 	targetUser.Status = "rejected"
 	database.DB.Save(&targetUser)
+	LogAction(c, user.ID, "reject_user", "user", targetUser.ID, "Отклонён: "+targetUser.Email)
 
-	c.Redirect(http.StatusFound, "/admin/users")
+	c.Redirect(http.StatusFound, "/dashboard#users")
 }
 
-// AdminUpdateRole обновляет роль пользователя
+// AdminUpdateRole обновляет роль пользователя (требует подтверждения жестом)
 func AdminUpdateRole(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
 	id := c.Param("id")
 	role := c.PostForm("role")
+
+	actionToken := c.PostForm("action_token")
+	if !middleware.ValidateActionToken(actionToken, user.ID) {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Отказано",
+			"message": "Требуется подтверждение жестом для изменения роли",
+		})
+		return
+	}
 
 	validRoles := map[string]bool{
 		"admin": true, "director": true, "accountant": true,
@@ -91,13 +106,16 @@ func AdminUpdateRole(c *gin.Context) {
 		return
 	}
 
+	oldRole := targetUser.Role
 	targetUser.Role = role
 	database.DB.Save(&targetUser)
+	LogAction(c, user.ID, "change_role", "user", targetUser.ID,
+		fmt.Sprintf("Роль %s -> %s для %s", oldRole, role, targetUser.Email))
 
-	c.Redirect(http.StatusFound, "/admin/users")
+	c.Redirect(http.StatusFound, "/dashboard#users")
 }
 
-// AdminDeleteUser удаляет пользователя
+// AdminDeleteUser удаляет пользователя (требует подтверждения жестом)
 func AdminDeleteUser(c *gin.Context) {
 	id := c.Param("id")
 
@@ -110,17 +128,36 @@ func AdminDeleteUser(c *gin.Context) {
 		return
 	}
 
+	actionToken := c.PostForm("action_token")
+	if !middleware.ValidateActionToken(actionToken, currentUser.ID) {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Отказано",
+			"message": "Требуется подтверждение жестом для удаления пользователя",
+		})
+		return
+	}
+
+	var targetUser models.User
+	database.DB.First(&targetUser, id)
+	LogAction(c, currentUser.ID, "delete_user", "user", targetUser.ID, "Удалён: "+targetUser.Email)
+
 	database.DB.Delete(&models.User{}, id)
-	c.Redirect(http.StatusFound, "/admin/users")
+	c.Redirect(http.StatusFound, "/dashboard#users")
 }
 
 // Dashboard отображает главную страницу
 func Dashboard(c *gin.Context) {
 	user := middleware.GetCurrentUser(c)
 
-	// Проекты
+	// Проекты (для админа — все, для остальных — только назначенные)
 	var projects []models.Project
-	database.DB.Preload("CreatedBy").Order("created_at desc").Find(&projects)
+	if user.IsAdmin() {
+		database.DB.Preload("CreatedBy").Order("created_at desc").Find(&projects)
+	} else {
+		database.DB.Preload("CreatedBy").
+			Joins("JOIN project_assignments ON project_assignments.project_id = projects.id AND project_assignments.user_id = ?", user.ID).
+			Order("projects.created_at desc").Find(&projects)
+	}
 
 	// Сметы
 	var estimates []models.Estimate
@@ -130,12 +167,14 @@ func Dashboard(c *gin.Context) {
 	var documents []models.Document
 	database.DB.Preload("UploadedBy").Preload("Project").Order("created_at desc").Find(&documents)
 
-	// Пользователи (только для админа)
+	// Пользователи и журнал (только для админа)
 	var pendingUsers []models.User
 	var approvedUsers []models.User
+	var recentLogs []models.AuditLog
 	if user.IsAdmin() {
 		database.DB.Where("status = ?", "pending").Order("created_at desc").Find(&pendingUsers)
 		database.DB.Where("status = ?", "approved").Order("created_at desc").Find(&approvedUsers)
+		database.DB.Preload("User").Order("created_at desc").Limit(10).Find(&recentLogs)
 	}
 
 	// Аналитика по статусам проектов
@@ -185,6 +224,7 @@ func Dashboard(c *gin.Context) {
 		"totalBudget":    totalBudget,
 		"totalEstimates": totalEstimates,
 		"avgBudget":      avgBudget,
+		"recentLogs":     recentLogs,
 	})
 }
 

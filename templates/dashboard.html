@@ -34,6 +34,11 @@
             <i class="bi bi-people"></i> Пользователи <span class="badge bg-primary ms-1">{{ .userCount }}</span>
         </button>
     </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="audit-tab" data-bs-toggle="tab" data-bs-target="#audit" type="button" role="tab">
+            <i class="bi bi-clock-history"></i> Журнал
+        </button>
+    </li>
     {{ end }}
 </ul>
 
@@ -368,7 +373,8 @@
                                             <option value="engineer" {{ if eq .Role "engineer" }}selected{{ end }}>Инженер</option>
                                             <option value="viewer" {{ if eq .Role "viewer" }}selected{{ end }}>Зритель</option>
                                         </select>
-                                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                                onclick="dangerousFormAction(this.closest('form'))">
                                             <i class="bi bi-save"></i>
                                         </button>
                                     </form>
@@ -376,12 +382,10 @@
                                 <td>{{ formatDate .CreatedAt }}</td>
                                 <td>
                                     {{ if not .IsAdmin }}
-                                    <form method="POST" action="/admin/users/{{ .ID }}/delete"
-                                          onsubmit="return confirm('Удалить пользователя {{ .Name }}?')">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                            onclick="dangerousAction('/admin/users/{{ .ID }}/delete', 'POST')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                     {{ end }}
                                 </td>
                             </tr>
@@ -391,6 +395,46 @@
                 </div>
                 {{ else }}
                 <div class="text-center py-4 text-muted">Нет активных пользователей</div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+    {{ end }}
+
+    <!-- ====== ЖУРНАЛ ДЕЙСТВИЙ (только admin) ====== -->
+    {{ if .user.IsAdmin }}
+    <div class="tab-pane fade" id="audit" role="tabpanel">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Последние действия</h5>
+                <a href="/admin/audit" class="btn btn-sm btn-outline-primary">Полный журнал</a>
+            </div>
+            <div class="card-body p-0">
+                {{ if .recentLogs }}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Пользователь</th>
+                                <th>Действие</th>
+                                <th>Подробности</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .recentLogs }}
+                            <tr>
+                                <td style="white-space: nowrap;">{{ formatDateTime .CreatedAt }}</td>
+                                <td>{{ .User.Name }}</td>
+                                <td><span class="badge bg-primary">{{ actionLabel .Action }}</span></td>
+                                <td>{{ .Details }}</td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+                {{ else }}
+                <div class="text-center py-4 text-muted">Пока нет записей</div>
                 {{ end }}
             </div>
         </div>

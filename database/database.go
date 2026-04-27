@@ -27,6 +27,8 @@ func Migrate() {
 		&models.Document{},
 		&models.Estimate{},
 		&models.EstimateItem{},
+		&models.AuditLog{},
+		&models.ProjectAssignment{},
 	)
 	if err != nil {
 		log.Fatal("Ошибка миграции: ", err)

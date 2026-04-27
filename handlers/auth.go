@@ -127,6 +127,8 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	LogAction(c, user.ID, "register", "user", user.ID, "Регистрация: "+user.Email)
+
 	// Первый пользователь (админ) — сразу входит
 	if status == "approved" {
 		tokenString, err := generateJWT(user.ID, user.Role)
@@ -280,6 +282,9 @@ func Login(c *gin.Context) {
 	}
 
 	c.SetCookie("token", tokenString, 900, "/", "", false, true)
+
+	LogAction(c, matchedUser.ID, "login", "user", matchedUser.ID, "Вход: "+matchedUser.Email)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Вход выполнен",
 		"user":     matchedUser.Name,
@@ -305,6 +310,97 @@ func euclideanDistance(a, b []float64) float64 {
 		sum += diff * diff
 	}
 	return math.Sqrt(sum)
+}
+
+// GestureVerifyChallenge генерирует задание жеста для подтверждения опасных действий
+func GestureVerifyChallenge(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Требуется аутентификация"})
+		return
+	}
+
+	gestures := []string{"thumbs_up", "peace", "open_palm", "one_finger"}
+	gesture := gestures[rand.Intn(len(gestures))]
+
+	claims := jwt.MapClaims{
+		"gesture": gesture,
+		"type":    "gesture_reverify",
+		"user_id": user.ID,
+		"exp":     time.Now().Add(2 * time.Minute).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, _ := token.SignedString(middleware.JWTSecret)
+
+	labels := map[string]string{
+		"thumbs_up":  "Большой палец вверх",
+		"peace":      "Знак мира (два пальца)",
+		"open_palm":  "Открытая ладонь",
+		"one_finger": "Один палец вверх",
+	}
+
+	emojis := map[string]string{
+		"thumbs_up":  "👍",
+		"peace":      "✌️",
+		"open_palm":  "✋",
+		"one_finger": "☝️",
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"gesture": gesture,
+		"label":   labels[gesture],
+		"emoji":   emojis[gesture],
+		"token":   tokenString,
+	})
+}
+
+// ConfirmGestureVerification подтверждает прохождение жеста и выдаёт токен действия
+func ConfirmGestureVerification(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Требуется аутентификация"})
+		return
+	}
+
+	var req struct {
+		GestureToken string `json:"gesture_token"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат"})
+		return
+	}
+
+	token, err := jwt.Parse(req.GestureToken, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return middleware.JWTSecret, nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Проверка жеста не пройдена"})
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || claims["type"] != "gesture_reverify" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Недействительный токен"})
+		return
+	}
+	if uint(claims["user_id"].(float64)) != user.ID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Токен для другого пользователя"})
+		return
+	}
+
+	// Выдаём короткоживущий токен подтверждения (30 секунд)
+	actionClaims := jwt.MapClaims{
+		"type":    "action_confirmed",
+		"user_id": user.ID,
+		"exp":     time.Now().Add(30 * time.Second).Unix(),
+	}
+	actionToken := jwt.NewWithClaims(jwt.SigningMethodHS256, actionClaims)
+	actionTokenString, _ := actionToken.SignedString(middleware.JWTSecret)
+
+	c.JSON(http.StatusOK, gin.H{"action_token": actionTokenString})
 }
 
 // generateJWT генерирует JWT-токен

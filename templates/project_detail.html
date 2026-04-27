@@ -9,15 +9,18 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>{{ .project.Name }}</h2>
     {{ if .user.CanEdit }}
-    <div>
+    <div class="d-flex gap-2 flex-wrap">
+        {{ if .user.IsAdmin }}
+        <a href="/admin/projects/{{ .project.ID }}/assignments" class="btn btn-outline-secondary">
+            <i class="bi bi-people"></i> Назначения
+        </a>
+        {{ end }}
         <a href="/projects/{{ .project.ID }}/edit" class="btn btn-outline-primary">
             <i class="bi bi-pencil"></i> Редактировать
         </a>
-        <form action="/projects/{{ .project.ID }}/delete" method="POST" class="d-inline" onsubmit="return confirm('Удалить проект?')">
-            <button type="submit" class="btn btn-outline-danger">
-                <i class="bi bi-trash"></i> Удалить
-            </button>
-        </form>
+        <button type="button" class="btn btn-outline-danger" onclick="dangerousAction('/projects/{{ .project.ID }}/delete', 'POST')">
+            <i class="bi bi-trash"></i> Удалить
+        </button>
     </div>
     {{ end }}
 </div>

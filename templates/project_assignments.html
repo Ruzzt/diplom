@@ -1,0 +1,88 @@
+{{ define "content" }}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard#projects">Проекты</a></li>
+        <li class="breadcrumb-item"><a href="/projects/{{ .project.ID }}">{{ .project.Name }}</a></li>
+        <li class="breadcrumb-item active">Назначения</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Назначенные пользователи</h5>
+            </div>
+            <div class="card-body p-0">
+                {{ if .assignments }}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Имя</th>
+                                <th>Email</th>
+                                <th>Роль</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .assignments }}
+                            <tr>
+                                <td><strong>{{ .User.Name }}</strong></td>
+                                <td>{{ .User.Email }}</td>
+                                <td><span class="badge bg-primary">{{ roleLabel .User.Role }}</span></td>
+                                <td class="text-end">
+                                    <form method="POST" action="/admin/projects/{{ $.project.ID }}/assignments/{{ .User.ID }}/delete"
+                                          onsubmit="return confirm('Снять пользователя с проекта?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-x-lg"></i> Снять
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+                {{ else }}
+                <div class="text-center py-4 text-muted">
+                    <p class="mb-0">Никто не назначен на проект</p>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-person-plus"></i> Добавить пользователя</h5>
+            </div>
+            <div class="card-body">
+                {{ if .availableUsers }}
+                <form method="POST" action="/admin/projects/{{ .project.ID }}/assignments">
+                    <div class="mb-3">
+                        <select name="user_id" class="form-select">
+                            {{ range .availableUsers }}
+                            <option value="{{ .ID }}">{{ .Name }} ({{ roleLabel .Role }})</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-lg"></i> Назначить
+                    </button>
+                </form>
+                {{ else }}
+                <p class="text-muted mb-0">Все пользователи уже назначены</p>
+                {{ end }}
+            </div>
+        </div>
+
+        <a href="/projects/{{ .project.ID }}" class="btn btn-outline-primary mt-3">
+            <i class="bi bi-arrow-left"></i> Назад к проекту
+        </a>
+    </div>
+</div>
+{{ end }}
+
+{{ template "layout" . }}

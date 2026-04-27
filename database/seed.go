@@ -306,6 +306,15 @@ func Seed() {
 		}
 	}
 
+	// Назначаем админа на все проекты
+	for _, p := range projects {
+		DB.Create(&models.ProjectAssignment{
+			ProjectID:  p.ID,
+			UserID:     user.ID,
+			AssignedBy: user.ID,
+		})
+	}
+
 	log.Println("Тестовые данные успешно добавлены!")
 	log.Printf("  Проектов: %d", len(projects))
 	log.Printf("  Смет: %d", len(estimates))

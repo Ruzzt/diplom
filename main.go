@@ -43,12 +43,24 @@ func main() {
 		"docTypeLabel":    models.DocTypeLabel,
 		"truncate":        truncate,
 		"inc":             func(i int) int { return i + 1 },
+		"sub":             func(a, b int) int { return a - b },
+		"lt":              func(a, b int) bool { return a < b },
+		"gt":              func(a, b int) bool { return a > b },
 		"marshal":         marshalJSON,
 		"eq": func(a, b interface{}) bool {
 			return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 		},
 		"roleLabel":       models.RoleLabel,
 		"userStatusLabel": models.StatusLabelUser,
+		"actionLabel":     models.ActionLabel,
+		"formatDateTime": func(t interface{}) string {
+			switch v := t.(type) {
+			case time.Time:
+				return v.Format("02.01.2006 15:04")
+			default:
+				return ""
+			}
+		},
 		"projectName": func(doc models.Document) string {
 			if doc.ProjectID == nil || *doc.ProjectID == 0 {
 				return "Корпоративный"
@@ -127,6 +139,10 @@ func main() {
 			editorEst.PUT("/api/estimates/:id", handlers.EstimateUpdate)
 		}
 
+		// Верификация жестом для опасных действий
+		auth.GET("/api/gesture-verify-challenge", handlers.GestureVerifyChallenge)
+		auth.POST("/api/gesture-verify-confirm", handlers.ConfirmGestureVerification)
+
 		// Админ-панель (только admin)
 		admin := auth.Group("/admin")
 		admin.Use(middleware.RequireAdmin())
@@ -136,6 +152,10 @@ func main() {
 			admin.POST("/users/:id/approve", handlers.AdminApproveUser)
 			admin.POST("/users/:id/reject", handlers.AdminRejectUser)
 			admin.POST("/users/:id/delete", handlers.AdminDeleteUser)
+			admin.GET("/audit", handlers.AuditLogPage)
+			admin.GET("/projects/:id/assignments", handlers.ProjectAssignmentsPage)
+			admin.POST("/projects/:id/assignments", handlers.ProjectAssignUser)
+			admin.POST("/projects/:id/assignments/:userId/delete", handlers.ProjectUnassignUser)
 		}
 	}
 
