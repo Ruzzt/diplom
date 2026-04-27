@@ -1,7 +1,7 @@
 {{ define "content" }}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/estimates">Сметы</a></li>
+        <li class="breadcrumb-item"><a href="/dashboard#estimates">Сметы</a></li>
         <li class="breadcrumb-item active">{{ if .editing }}Редактирование{{ else }}Новая смета{{ end }}</li>
     </ol>
 </nav>
@@ -43,7 +43,7 @@
                 <tbody id="itemsBody">
                 </tbody>
                 <tfoot>
-                    <tr class="table-dark">
+                    <tr>
                         <td colspan="4" class="text-end"><strong>ИТОГО:</strong></td>
                         <td class="text-end"><strong id="totalAmount">0.00</strong> руб.</td>
                         <td></td>
@@ -60,7 +60,7 @@
             <button type="button" class="btn btn-primary btn-lg" onclick="saveEstimate()">
                 <i class="bi bi-check-lg"></i> {{ if .editing }}Сохранить{{ else }}Создать{{ end }}
             </button>
-            <a href="/estimates" class="btn btn-outline-secondary btn-lg">Отмена</a>
+            <a href="/dashboard#estimates" class="btn btn-outline-secondary btn-lg">Отмена</a>
         </div>
     </div>
 </div>

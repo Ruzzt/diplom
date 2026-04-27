@@ -1,7 +1,7 @@
 {{ define "content" }}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/projects">Проекты</a></li>
+        <li class="breadcrumb-item"><a href="/dashboard#projects">Проекты</a></li>
         <li class="breadcrumb-item active">{{ if .editing }}Редактирование{{ else }}Новый проект{{ end }}</li>
     </ol>
 </nav>
@@ -56,7 +56,7 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-lg"></i> {{ if .editing }}Сохранить{{ else }}Создать{{ end }}
                         </button>
-                        <a href="/projects" class="btn btn-outline-secondary">Отмена</a>
+                        <a href="/dashboard#projects" class="btn btn-outline-secondary">Отмена</a>
                     </div>
                 </form>
             </div>
