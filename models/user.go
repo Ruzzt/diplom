@@ -13,6 +13,7 @@ type User struct {
 	Role           string         `gorm:"size:50;not null;default:'viewer'" json:"role"`   // admin, director, accountant, manager, engineer, viewer
 	Status         string         `gorm:"size:20;not null;default:'pending'" json:"status"` // pending, approved, rejected
 	FaceDescriptor string         `gorm:"type:text" json:"face_descriptor"`
+	FaceLandmarks  string         `gorm:"type:text" json:"face_landmarks"` // 68 точек лица для геометрического метода
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`

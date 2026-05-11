@@ -95,6 +95,11 @@ func main() {
 		// Дашборд
 		auth.GET("/dashboard", handlers.Dashboard)
 
+		// Сравнение методов распознавания
+		auth.GET("/benchmark", handlers.BenchmarkPage)
+		auth.POST("/api/benchmark", handlers.BenchmarkCompare)
+		auth.POST("/api/benchmark/update-landmarks", handlers.BenchmarkUpdateLandmarks)
+
 		// Проекты — просмотр (все роли)
 		auth.GET("/projects", handlers.ProjectsList)
 		auth.GET("/projects/:id", handlers.ProjectDetail)

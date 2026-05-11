@@ -246,7 +246,7 @@ async function detectFaceLoop() {
     }, 300);
 }
 
-async function captureFaceDescriptor() {
+async function captureFaceData() {
     const statusEl = document.getElementById('status');
     const statusText = document.getElementById('statusText');
 
@@ -267,7 +267,18 @@ async function captureFaceDescriptor() {
     statusEl.className = 'alert alert-success';
     statusText.textContent = 'Лицо распознано!';
 
-    return Array.from(detection.descriptor);
+    // Извлекаем landmarks (68 точек) — нормализованные координаты
+    const positions = detection.landmarks.positions;
+    const box = detection.detection.box;
+    const landmarks = positions.map(pt => ({
+        x: (pt.x - box.x) / box.width,
+        y: (pt.y - box.y) / box.height
+    }));
+
+    return {
+        descriptor: Array.from(detection.descriptor),
+        landmarks: landmarks
+    };
 }
 
 // ==================== Вход ====================
@@ -286,8 +297,8 @@ async function handleLogin() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Распознавание...';
 
-    const descriptor = await captureFaceDescriptor();
-    if (!descriptor) {
+    const faceData = await captureFaceData();
+    if (!faceData) {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-person-check"></i> Войти по лицу';
         return;
@@ -300,7 +311,8 @@ async function handleLogin() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                face_descriptor: descriptor,
+                face_descriptor: faceData.descriptor,
+                face_landmarks: faceData.landmarks,
                 gesture_token: gestureToken
             })
         });
@@ -354,8 +366,8 @@ async function handleRegister() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Регистрация...';
 
-    const descriptor = await captureFaceDescriptor();
-    if (!descriptor) {
+    const faceData = await captureFaceData();
+    if (!faceData) {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-person-check"></i> Зарегистрироваться';
         return;
@@ -365,7 +377,7 @@ async function handleRegister() {
         const response = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, role, face_descriptor: descriptor })
+            body: JSON.stringify({ name, email, role, face_descriptor: faceData.descriptor, face_landmarks: faceData.landmarks })
         });
 
         const data = await response.json();

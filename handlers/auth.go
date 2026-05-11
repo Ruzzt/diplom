@@ -5,6 +5,7 @@ import (
 	"face-auth-system/database"
 	"face-auth-system/middleware"
 	"face-auth-system/models"
+	"face-auth-system/recognition"
 	"math"
 	"math/rand"
 	"net/http"
@@ -58,10 +59,11 @@ func RegisterPage(c *gin.Context) {
 }
 
 type RegisterRequest struct {
-	Name           string    `json:"name"`
-	Email          string    `json:"email"`
-	Role           string    `json:"role"`
-	FaceDescriptor []float64 `json:"face_descriptor"`
+	Name           string                   `json:"name"`
+	Email          string                   `json:"email"`
+	Role           string                   `json:"role"`
+	FaceDescriptor []float64                `json:"face_descriptor"`
+	FaceLandmarks  []recognition.Landmark   `json:"face_landmarks"`
 }
 
 // Register обрабатывает регистрацию нового пользователя
@@ -114,12 +116,16 @@ func Register(c *gin.Context) {
 		status = "approved"
 	}
 
+	// Сериализуем landmarks
+	landmarksJSON, _ := json.Marshal(req.FaceLandmarks)
+
 	user := models.User{
 		Name:           req.Name,
 		Email:          req.Email,
 		Role:           role,
 		Status:         status,
 		FaceDescriptor: string(descriptorJSON),
+		FaceLandmarks:  string(landmarksJSON),
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -188,8 +194,9 @@ func GestureChallenge(c *gin.Context) {
 }
 
 type LoginRequest struct {
-	FaceDescriptor []float64 `json:"face_descriptor"`
-	GestureToken   string    `json:"gesture_token"`
+	FaceDescriptor []float64                `json:"face_descriptor"`
+	FaceLandmarks  []recognition.Landmark   `json:"face_landmarks"`
+	GestureToken   string                   `json:"gesture_token"`
 }
 
 // Login обрабатывает вход по лицу
@@ -274,6 +281,18 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// Benchmark: сравнение нейросетевого и геометрического методов
+	var benchmark *recognition.BenchmarkResult
+	if len(req.FaceLandmarks) >= 68 && matchedUser.FaceLandmarks != "" {
+		var storedLandmarks []recognition.Landmark
+		if err := json.Unmarshal([]byte(matchedUser.FaceLandmarks), &storedLandmarks); err == nil {
+			var storedDescriptor []float64
+			json.Unmarshal([]byte(matchedUser.FaceDescriptor), &storedDescriptor)
+			result := recognition.RunBenchmark(req.FaceDescriptor, storedDescriptor, req.FaceLandmarks, storedLandmarks)
+			benchmark = &result
+		}
+	}
+
 	// Генерируем JWT
 	tokenString, err := generateJWT(matchedUser.ID, matchedUser.Role)
 	if err != nil {
@@ -285,12 +304,16 @@ func Login(c *gin.Context) {
 
 	LogAction(c, matchedUser.ID, "login", "user", matchedUser.ID, "Вход: "+matchedUser.Email)
 
-	c.JSON(http.StatusOK, gin.H{
+	response := gin.H{
 		"message":  "Вход выполнен",
 		"user":     matchedUser.Name,
 		"role":     matchedUser.Role,
 		"distance": minDistance,
-	})
+	}
+	if benchmark != nil {
+		response["benchmark"] = benchmark
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 // Logout выполняет выход

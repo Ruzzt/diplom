@@ -1,0 +1,371 @@
+{{ define "content" }}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">Панель управления</a></li>
+        <li class="breadcrumb-item active">Сравнение методов</li>
+    </ol>
+</nav>
+
+<h2 style="font-weight: 800; margin-bottom: 0.5rem;">Сравнение методов распознавания</h2>
+<p class="text-muted mb-4">Нейросетевой (face-api.js, 128-мерный эмбеддинг) vs Геометрический (собственный, 18 признаков)</p>
+
+<div class="row">
+    <div class="col-lg-5 col-md-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <label class="form-label" style="font-weight: 700;">Камера</label>
+                <div class="video-container mb-3">
+                    <video id="video" width="100%" autoplay muted playsinline></video>
+                    <canvas id="overlay" class="video-overlay"></canvas>
+                </div>
+
+                <div id="status" class="alert alert-info">
+                    <span id="statusText">Загрузка моделей...</span>
+                </div>
+
+                <!-- Шаг 1: Обновить биометрию -->
+                <div id="step1" class="{{ if .hasLandmarks }}d-none{{ end }}">
+                    <div class="alert alert-warning">
+                        <strong>Шаг 1:</strong> Сначала нужно обновить биометрию — сохранить точки лица для геометрического метода.
+                    </div>
+                    <button id="updateBtn" class="btn btn-warning btn-lg w-100 mb-3" disabled onclick="updateLandmarks()">
+                        <i class="bi bi-arrow-repeat"></i> Обновить биометрию
+                    </button>
+                </div>
+
+                <!-- Шаг 2: Сравнение -->
+                <div id="step2" class="{{ if not .hasLandmarks }}d-none{{ end }}">
+                    <button id="benchBtn" class="btn btn-primary btn-lg w-100 mb-2" disabled onclick="runBenchmark()">
+                        <i class="bi bi-speedometer2"></i> Запустить сравнение
+                    </button>
+                    <button class="btn btn-outline-secondary w-100" onclick="updateLandmarks()">
+                        <i class="bi bi-arrow-repeat"></i> Пересканировать лицо
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7 col-md-6">
+        <!-- Результаты -->
+        <div id="resultsArea" class="d-none">
+            <!-- Сводка -->
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="card shadow-sm text-center p-3">
+                        <small class="text-muted">Нейросетевой метод</small>
+                        <h4 id="neuralResult" style="font-weight: 800;">—</h4>
+                        <small id="neuralTime" class="text-muted"></small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card shadow-sm text-center p-3">
+                        <small class="text-muted">Геометрический метод</small>
+                        <h4 id="geoResult" style="font-weight: 800;">—</h4>
+                        <small id="geoTime" class="text-muted"></small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Детальная таблица -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-table"></i> Результаты по всем пользователям</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Пользователь</th>
+                                    <th>Нейросеть (d)</th>
+                                    <th>Нейросеть</th>
+                                    <th>Геометрия (d)</th>
+                                    <th>Геометрия</th>
+                                    <th>Время</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Описание методов -->
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 style="font-weight: 700;"><i class="bi bi-cpu"></i> Нейросетевой метод</h6>
+                            <ul class="small text-muted mb-0">
+                                <li>Библиотека: face-api.js (ResNet-34)</li>
+                                <li>Размер дескриптора: 128 чисел</li>
+                                <li>Метрика: евклидово расстояние</li>
+                                <li>Порог: 0.6</li>
+                                <li>Вычисление дескриптора: в браузере (WebGL)</li>
+                                <li>Сравнение: на сервере (Go)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 style="font-weight: 700;"><i class="bi bi-rulers"></i> Геометрический метод (собственный)</h6>
+                            <ul class="small text-muted mb-0">
+                                <li>Реализация: Go, с нуля</li>
+                                <li>Размер дескриптора: 18 признаков</li>
+                                <li>Признаки: расстояния между частями лица</li>
+                                <li>Метрика: евклидово расстояние</li>
+                                <li>Порог: 0.15</li>
+                                <li>Вычисление: полностью на сервере (Go)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- До запуска -->
+        <div id="placeholder">
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-5">
+                    <div style="width: 72px; height: 72px; background: var(--blue-light); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.8rem; color: var(--blue); margin-bottom: 1rem;">
+                        <i class="bi bi-speedometer2"></i>
+                    </div>
+                    <h5 style="font-weight: 700;">Как это работает</h5>
+                    <div class="text-start" style="max-width: 400px; margin: 0 auto;">
+                        <p class="text-muted small"><strong>1.</strong> {{ if not .hasLandmarks }}Нажмите «Обновить биометрию» — система сохранит 68 точек вашего лица для геометрического метода.{{ else }}Биометрия уже сохранена.{{ end }}</p>
+                        <p class="text-muted small"><strong>2.</strong> Нажмите «Запустить сравнение» — система сфотографирует ваше лицо.</p>
+                        <p class="text-muted small"><strong>3.</strong> Сервер сравнит вас со всеми пользователями двумя методами одновременно.</p>
+                        <p class="text-muted small mb-0"><strong>4.</strong> Увидите таблицу с результатами: расстояния, совпадения, время каждого метода.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14/dist/face-api.js"></script>
+<script>
+let video;
+
+async function initBenchmark() {
+    video = document.getElementById('video');
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+
+    try {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14/model';
+
+        statusText.textContent = 'Загрузка моделей распознавания...';
+
+        await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+
+        statusText.textContent = 'Запуск камеры...';
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480, facingMode: 'user' }
+        });
+        video.srcObject = stream;
+
+        video.addEventListener('play', () => {
+            statusEl.className = 'alert alert-success';
+            statusText.textContent = 'Камера готова.';
+
+            const updateBtn = document.getElementById('updateBtn');
+            const benchBtn = document.getElementById('benchBtn');
+            if (updateBtn) updateBtn.disabled = false;
+            if (benchBtn) benchBtn.disabled = false;
+
+            // Рамка детекции
+            const overlay = document.getElementById('overlay');
+            setInterval(async () => {
+                const rect = video.getBoundingClientRect();
+                const ds = { width: rect.width, height: rect.height };
+                if (overlay.width !== ds.width) {
+                    overlay.width = ds.width;
+                    overlay.height = ds.height;
+                    overlay.style.width = ds.width + 'px';
+                    overlay.style.height = ds.height + 'px';
+                }
+                const dets = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+                const resized = faceapi.resizeResults(dets, ds);
+                const ctx = overlay.getContext('2d');
+                ctx.clearRect(0, 0, overlay.width, overlay.height);
+                faceapi.draw.drawDetections(overlay, resized);
+            }, 300);
+        });
+    } catch (err) {
+        statusEl.className = 'alert alert-danger';
+        statusText.textContent = 'Ошибка: ' + err.message;
+    }
+}
+
+async function captureFace() {
+    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks().withFaceDescriptor();
+
+    if (!detection) return null;
+
+    const descriptor = Array.from(detection.descriptor);
+    const positions = detection.landmarks.positions;
+    const box = detection.detection.box;
+    const landmarks = positions.map(pt => ({
+        x: (pt.x - box.x) / box.width,
+        y: (pt.y - box.y) / box.height
+    }));
+
+    return { descriptor, landmarks };
+}
+
+async function updateLandmarks() {
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+
+    statusText.textContent = 'Сканирование лица...';
+    statusEl.className = 'alert alert-info';
+
+    const faceData = await captureFace();
+    if (!faceData) {
+        statusEl.className = 'alert alert-danger';
+        statusText.textContent = 'Лицо не обнаружено. Посмотрите в камеру.';
+        return;
+    }
+
+    statusText.textContent = 'Сохранение биометрии...';
+
+    const res = await fetch('/api/benchmark/update-landmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            face_descriptor: faceData.descriptor,
+            face_landmarks: faceData.landmarks
+        })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+        statusEl.className = 'alert alert-success';
+        statusText.textContent = 'Биометрия обновлена! Теперь можно запустить сравнение.';
+
+        // Показываем кнопку сравнения
+        document.getElementById('step1').classList.add('d-none');
+        document.getElementById('step2').classList.remove('d-none');
+    } else {
+        statusEl.className = 'alert alert-danger';
+        statusText.textContent = data.error || 'Ошибка сохранения';
+    }
+}
+
+async function runBenchmark() {
+    const btn = document.getElementById('benchBtn');
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Анализ...';
+    statusText.textContent = 'Сканирование лица...';
+    statusEl.className = 'alert alert-info';
+
+    const faceData = await captureFace();
+    if (!faceData) {
+        statusEl.className = 'alert alert-danger';
+        statusText.textContent = 'Лицо не обнаружено. Посмотрите в камеру.';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-speedometer2"></i> Запустить сравнение';
+        return;
+    }
+
+    statusText.textContent = 'Сравнение на сервере...';
+
+    const res = await fetch('/api/benchmark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            face_descriptor: faceData.descriptor,
+            face_landmarks: faceData.landmarks
+        })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        statusEl.className = 'alert alert-danger';
+        statusText.textContent = data.error || 'Ошибка сравнения';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-speedometer2"></i> Запустить сравнение';
+        return;
+    }
+
+    displayResults(data);
+
+    statusEl.className = 'alert alert-success';
+    statusText.textContent = 'Сравнение выполнено!';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-speedometer2"></i> Запустить снова';
+}
+
+function displayResults(data) {
+    document.getElementById('placeholder').classList.add('d-none');
+    document.getElementById('resultsArea').classList.remove('d-none');
+
+    if (!data.results || data.results.length === 0) {
+        document.getElementById('neuralResult').textContent = 'Нет данных';
+        document.getElementById('geoResult').textContent = 'Нет данных';
+        return;
+    }
+
+    // Ищем себя
+    const self = data.results.find(r => r.is_self);
+    if (self) {
+        const nr = self.result;
+        document.getElementById('neuralResult').textContent =
+            nr.neural_match ? 'Совпадение (' + nr.neural_distance.toFixed(3) + ')' : 'Нет (' + nr.neural_distance.toFixed(3) + ')';
+        document.getElementById('neuralResult').style.color = nr.neural_match ? '#00C853' : '#FF3D57';
+        document.getElementById('neuralTime').textContent = nr.neural_time_ms.toFixed(3) + ' мс';
+
+        document.getElementById('geoResult').textContent =
+            nr.geometric_match_euclid ? 'Совпадение (' + nr.geometric_euclidean.toFixed(4) + ')' : 'Нет (' + nr.geometric_euclidean.toFixed(4) + ')';
+        document.getElementById('geoResult').style.color = nr.geometric_match_euclid ? '#00C853' : '#FF3D57';
+        document.getElementById('geoTime').textContent = nr.geometric_time_ms.toFixed(3) + ' мс';
+    }
+
+    // Таблица
+    const tbody = document.getElementById('resultsTable');
+    tbody.innerHTML = '';
+    data.results.forEach(r => {
+        const nr = r.result;
+        const row = document.createElement('tr');
+        if (r.is_self) row.style.background = '#f0f9ff';
+        row.innerHTML = `
+            <td><strong>${r.user_name}</strong>${r.is_self ? ' <span class="badge bg-primary">вы</span>' : ''}</td>
+            <td>${nr.neural_distance.toFixed(4)}</td>
+            <td>${nr.neural_match
+                ? '<span class="badge bg-success">Да</span>'
+                : '<span class="badge bg-danger">Нет</span>'}</td>
+            <td>${nr.geometric_euclidean > 0 ? nr.geometric_euclidean.toFixed(4) : '—'}</td>
+            <td>${nr.geometric_euclidean > 0
+                ? (nr.geometric_match_euclid
+                    ? '<span class="badge bg-success">Да</span>'
+                    : '<span class="badge bg-danger">Нет</span>')
+                : '<span class="badge bg-secondary">Нет данных</span>'}</td>
+            <td class="small text-muted">Н: ${nr.neural_time_ms.toFixed(2)}мс<br>Г: ${nr.geometric_time_ms.toFixed(2)}мс</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+initBenchmark();
+</script>
+{{ end }}
+
+{{ template "layout" . }}
