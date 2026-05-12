@@ -34,15 +34,21 @@ def main() -> None:
     dummy = torch.randn(1, 3, FaceEmbeddingNet.INPUT_SIZE, FaceEmbeddingNet.INPUT_SIZE)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    torch.onnx.export(
-        model,
-        dummy,
-        str(args.out),
-        input_names=["input"],
-        output_names=["embedding"],
-        dynamic_axes={"input": {0: "batch"}, "embedding": {0: "batch"}},
-        opset_version=args.opset,
-    )
+
+    common = {
+        "input_names": ["input"],
+        "output_names": ["embedding"],
+        "dynamic_axes": {"input": {0: "batch"}, "embedding": {0: "batch"}},
+        "opset_version": args.opset,
+    }
+
+    # В новых PyTorch (2.5+) dynamo=True требует onnxscript. Если его нет —
+    # откатываемся на старый TorchScript-экспортёр, он работает без onnxscript.
+    try:
+        torch.onnx.export(model, dummy, str(args.out), dynamo=False, **common)
+    except TypeError:
+        # старые PyTorch не знают про параметр dynamo
+        torch.onnx.export(model, dummy, str(args.out), **common)
 
     size_mb = args.out.stat().st_size / (1024 * 1024)
     print(f"[export] сохранено: {args.out}")

@@ -29,6 +29,14 @@ func main() {
 	// Настройка JWT
 	middleware.SetJWTSecret(cfg.JWTSecret)
 
+	// Загрузка собственной модели распознавания лиц (ONNX).
+	// Не критично: если onnxruntime не установлен, страница /compare покажет
+	// предупреждение, остальные функции работают.
+	if err := handlers.InitFaceModel("ml_models/face_embedding.onnx"); err != nil {
+		log.Printf("Предупреждение: собственная модель не загружена: %v", err)
+	}
+	defer handlers.DestroyFaceModel()
+
 	// Настройка Gin
 	r := gin.Default()
 
@@ -82,6 +90,10 @@ func main() {
 	r.GET("/login", handlers.LoginPage)
 	r.GET("/register", handlers.RegisterPage)
 	r.GET("/logout", handlers.Logout)
+
+	// Сравнение моделей распознавания: face-api vs собственная
+	r.GET("/compare", handlers.ComparePage)
+	r.POST("/api/compare-models", handlers.CompareModels)
 
 	// API аутентификации (без JWT)
 	r.POST("/api/register", handlers.Register)

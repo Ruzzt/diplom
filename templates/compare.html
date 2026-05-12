@@ -1,0 +1,358 @@
+{{ define "content" }}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 style="font-weight: 800; letter-spacing: -0.5px; margin-bottom: 0.15rem;">
+            Сравнение моделей распознавания лиц
+        </h2>
+    </div>
+</div>
+
+{{ if not .customModelReady }}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    <strong>Собственная модель не загружена.</strong>
+    Проверь, что установлен <code>onnxruntime</code> и файл
+    <code>ml_models/face_embedding.onnx</code> существует. Запусти сервер заново
+    после установки зависимостей.
+</div>
+{{ end }}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title mb-3"><i class="bi bi-images"></i> Два лица для сравнения</h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Лицо №1</label>
+                <input type="file" class="form-control mb-2" id="file1" accept="image/*">
+                <div class="border rounded p-2 text-center" style="min-height: 220px; background:#f8f9fa;">
+                    <img id="preview1" style="max-height: 200px; max-width: 100%; display: none;">
+                    <span id="placeholder1" class="text-muted small">Загрузите фото с лицом</span>
+                </div>
+                <div class="text-muted small mt-2" id="status1"></div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Лицо №2</label>
+                <input type="file" class="form-control mb-2" id="file2" accept="image/*">
+                <div class="border rounded p-2 text-center" style="min-height: 220px; background:#f8f9fa;">
+                    <img id="preview2" style="max-height: 200px; max-width: 100%; display: none;">
+                    <span id="placeholder2" class="text-muted small">Загрузите фото с лицом</span>
+                </div>
+                <div class="text-muted small mt-2" id="status2"></div>
+            </div>
+        </div>
+        <hr class="my-4">
+        <h6 class="text-muted mb-3"><i class="bi bi-camera-video"></i> Или снять с камеры</h6>
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+            <button class="btn btn-outline-primary btn-sm" id="btnCameraToggle">
+                <i class="bi bi-camera-video"></i> Включить камеру
+            </button>
+            <button class="btn btn-outline-secondary btn-sm d-none" id="btnSnap1" disabled>
+                <i class="bi bi-camera"></i> Снимок → Лицо №1
+            </button>
+            <button class="btn btn-outline-secondary btn-sm d-none" id="btnSnap2" disabled>
+                <i class="bi bi-camera"></i> Снимок → Лицо №2
+            </button>
+        </div>
+        <div id="cameraBlock" class="d-none text-center mb-2">
+            <video id="cameraVideo" autoplay muted playsinline
+                   style="max-width: 480px; max-height: 360px; border-radius: 8px; background:#000;"></video>
+        </div>
+
+        <hr class="my-4">
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-primary" id="btnCompare" disabled>
+                <i class="bi bi-calculator"></i> Сравнить лица
+            </button>
+            <span id="loaderStatus" class="text-muted small">Ожидание загрузки моделей face-api…</span>
+        </div>
+    </div>
+</div>
+
+<div id="resultsCard" class="card d-none">
+    <div class="card-body">
+        <h5 class="card-title mb-3"><i class="bi bi-graph-up"></i> Результаты сравнения</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Метрика</th>
+                        <th>face-api (ResNet-34)</th>
+                        <th>Собственная модель</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Параметры модели</td>
+                        <td>~22 000 000</td>
+                        <td>190 336</td>
+                    </tr>
+                    <tr>
+                        <td>Размер модели</td>
+                        <td>~6 MB</td>
+                        <td>0.73 MB</td>
+                    </tr>
+                    <tr>
+                        <td>Точность на LFW (паспорт)</td>
+                        <td>~99.4%</td>
+                        <td>90.5%</td>
+                    </tr>
+                    <tr>
+                        <td>Евклидово расстояние</td>
+                        <td><strong id="rFaApiDist">—</strong></td>
+                        <td><strong id="rCustomDist">—</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Порог</td>
+                        <td id="rFaApiTh">—</td>
+                        <td id="rCustomTh">—</td>
+                    </tr>
+                    <tr>
+                        <td>Вердикт</td>
+                        <td id="rFaApiVerdict">—</td>
+                        <td id="rCustomVerdict">—</td>
+                    </tr>
+                    <tr>
+                        <td>Время инференса</td>
+                        <td id="rFaApiTime">—</td>
+                        <td id="rCustomTime">—</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="errorBox" class="alert alert-danger d-none mt-3"></div>
+    </div>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14/dist/face-api.min.js"></script>
+<script>
+(async () => {
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.14/model';
+    const $ = (id) => document.getElementById(id);
+
+    const slots = [
+        { file: 'file1', preview: 'preview1', placeholder: 'placeholder1', status: 'status1', data: null },
+        { file: 'file2', preview: 'preview2', placeholder: 'placeholder2', status: 'status2', data: null },
+    ];
+
+    // 1. Грузим модели face-api
+    $('loaderStatus').textContent = 'Загрузка моделей face-api…';
+    await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
+
+    // Прогреваем face-api пустым прогоном на dummy-картинке.
+    // Иначе первое реальное измерение получит +1.5 сек на JIT/WebGL/инициализацию
+    // и сильно искажает таблицу в записке.
+    $('loaderStatus').textContent = 'Прогрев face-api…';
+    try {
+        const warmupCanvas = document.createElement('canvas');
+        warmupCanvas.width = 224; warmupCanvas.height = 224;
+        const wctx = warmupCanvas.getContext('2d');
+        wctx.fillStyle = '#888'; wctx.fillRect(0, 0, 224, 224);
+        await faceapi.detectSingleFace(warmupCanvas, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks().withFaceDescriptor();
+    } catch (_) { /* нет лица на dummy — ожидаемо, прогрев всё равно прошёл */ }
+
+    $('loaderStatus').textContent = 'Модели готовы. Загрузите два фото.';
+
+    // 2. Утилита: из картинки получить (а) обрезанное лицо 112×112 в base64,
+    //    (б) дескриптор face-api 128-D. Время инференса face-api тоже измеряем.
+    async function processImage(img) {
+        const t0 = performance.now();
+        const detection = await faceapi
+            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+        const t1 = performance.now();
+        if (!detection) return { error: 'Лицо не найдено' };
+
+        // Обрезаем лицо квадратом и ресайзим до 112×112 — формат своей модели
+        const box = detection.detection.box;
+        const margin = Math.max(box.width, box.height) * 0.15;
+        const side = Math.max(box.width, box.height) + 2 * margin;
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        const sx = Math.max(0, cx - side / 2);
+        const sy = Math.max(0, cy - side / 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 112;
+        canvas.height = 112;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, 112, 112);
+
+        return {
+            descriptor: Array.from(detection.descriptor),
+            croppedB64: canvas.toDataURL('image/jpeg', 0.92),
+            faceApiTimeMs: t1 - t0,
+        };
+    }
+
+    // Универсальный обработчик: получает HTMLImageElement и dataURL для превью,
+    // прогоняет через face-api, обновляет слот и кнопку «Сравнить».
+    async function fillSlot(slotIdx, img, previewSrc) {
+        const slot = slots[slotIdx];
+        $(slot.preview).src = previewSrc;
+        $(slot.preview).style.display = '';
+        $(slot.placeholder).style.display = 'none';
+        $(slot.status).textContent = 'Поиск лица…';
+        const result = await processImage(img);
+        if (result.error) {
+            $(slot.status).innerHTML = '<span class="text-danger">' + result.error + '</span>';
+            slot.data = null;
+        } else {
+            $(slot.status).innerHTML =
+                '<span class="text-success">✓ Лицо обнаружено</span>' +
+                ' • face-api: ' + result.faceApiTimeMs.toFixed(1) + ' мс';
+            slot.data = result;
+        }
+        refreshButton();
+    }
+
+    function attachInput(slotIdx) {
+        const slot = slots[slotIdx];
+        $(slot.file).addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => fillSlot(slotIdx, img, url);
+            img.src = url;
+        });
+    }
+    slots.forEach((_, i) => attachInput(i));
+
+    // --- Камера: общий поток, два слота снимков ---
+    let cameraStream = null;
+    const cameraVideo = $('cameraVideo');
+
+    $('btnCameraToggle').addEventListener('click', async () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+            cameraVideo.srcObject = null;
+            $('cameraBlock').classList.add('d-none');
+            $('btnCameraToggle').innerHTML =
+                '<i class="bi bi-camera-video"></i> Включить камеру';
+            $('btnSnap1').classList.add('d-none');
+            $('btnSnap2').classList.add('d-none');
+            $('btnSnap1').disabled = true;
+            $('btnSnap2').disabled = true;
+            return;
+        }
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+                audio: false,
+            });
+            cameraVideo.srcObject = cameraStream;
+            await cameraVideo.play();
+            $('cameraBlock').classList.remove('d-none');
+            $('btnCameraToggle').innerHTML =
+                '<i class="bi bi-camera-video-off"></i> Выключить камеру';
+            $('btnSnap1').classList.remove('d-none');
+            $('btnSnap2').classList.remove('d-none');
+            $('btnSnap1').disabled = false;
+            $('btnSnap2').disabled = false;
+        } catch (e) {
+            alert('Не удалось включить камеру: ' + e.message);
+        }
+    });
+
+    async function takeSnapshot(slotIdx) {
+        if (!cameraStream) return;
+        const w = cameraVideo.videoWidth || 640;
+        const h = cameraVideo.videoHeight || 480;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(cameraVideo, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const img = new Image();
+        img.onload = () => fillSlot(slotIdx, img, dataUrl);
+        img.src = dataUrl;
+    }
+    $('btnSnap1').addEventListener('click', () => takeSnapshot(0));
+    $('btnSnap2').addEventListener('click', () => takeSnapshot(1));
+
+    // При уходе со страницы — отпускаем камеру
+    window.addEventListener('beforeunload', () => {
+        if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+    });
+
+    function refreshButton() {
+        $('btnCompare').disabled = !(slots[0].data && slots[1].data);
+    }
+
+    $('btnCompare').addEventListener('click', async () => {
+        $('btnCompare').disabled = true;
+        $('btnCompare').innerHTML =
+            '<span class="spinner-border spinner-border-sm me-2"></span>Сравниваем…';
+        $('errorBox').classList.add('d-none');
+
+        try {
+            const res = await fetch('/api/compare-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image1: {
+                        face_api_descriptor: slots[0].data.descriptor,
+                        cropped_image_b64: slots[0].data.croppedB64,
+                    },
+                    image2: {
+                        face_api_descriptor: slots[1].data.descriptor,
+                        cropped_image_b64: slots[1].data.croppedB64,
+                    },
+                }),
+            });
+            const data = await res.json();
+            renderResults(data);
+        } catch (err) {
+            $('errorBox').textContent = 'Ошибка запроса: ' + err.message;
+            $('errorBox').classList.remove('d-none');
+        }
+        $('btnCompare').disabled = false;
+        $('btnCompare').innerHTML = '<i class="bi bi-calculator"></i> Сравнить лица';
+    });
+
+    function renderResults(data) {
+        $('resultsCard').classList.remove('d-none');
+
+        const fa = data.face_api || {};
+        const cu = data.custom_model || {};
+
+        $('rFaApiDist').textContent = fa.error ? '—' : fa.distance.toFixed(4);
+        $('rFaApiTh').textContent = fa.error ? '—' : '< ' + fa.threshold.toFixed(2);
+        $('rFaApiVerdict').innerHTML = fa.error
+            ? '<span class="text-muted">' + fa.error + '</span>'
+            : (fa.match
+                ? '<span class="badge bg-success">одно лицо</span>'
+                : '<span class="badge bg-danger">разные лица</span>');
+        const faApiTime1 = slots[0].data ? slots[0].data.faceApiTimeMs : 0;
+        const faApiTime2 = slots[1].data ? slots[1].data.faceApiTimeMs : 0;
+        $('rFaApiTime').textContent = (
+            faApiTime1.toFixed(1) + ' мс + ' + faApiTime2.toFixed(1) + ' мс'
+        );
+
+        $('rCustomDist').textContent = cu.error ? '—' : cu.distance.toFixed(4);
+        $('rCustomTh').textContent = cu.error ? '—' : '< ' + cu.threshold.toFixed(2);
+        $('rCustomVerdict').innerHTML = cu.error
+            ? '<span class="text-muted">' + cu.error + '</span>'
+            : (cu.match
+                ? '<span class="badge bg-success">одно лицо</span>'
+                : '<span class="badge bg-danger">разные лица</span>');
+        if (!cu.error) {
+            $('rCustomTime').textContent = (
+                cu.inference_ms_1.toFixed(2) + ' мс + ' + cu.inference_ms_2.toFixed(2) + ' мс'
+            );
+        } else {
+            $('rCustomTime').textContent = '—';
+        }
+    }
+})();
+</script>
+{{ end }}
