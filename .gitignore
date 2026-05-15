@@ -2,3 +2,7 @@ uploads/
 *.exe
 *.db
 .env
+ml/.venv
+ml/data
+ml/checkpoints
+ml/__pycache__
